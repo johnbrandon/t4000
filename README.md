@@ -24,15 +24,18 @@ that day's main activity.
   **in the past** by entering a date, time, and coordinates — the street address
   is resolved live and historical temperature/weather/dewpoint are looked up from
   Open-Meteo's archive. Location is best-effort: a check-in still saves without it.
-  Activity types: Buyer, Deep work / biz dev, Landlord, Renter, Seller, Social,
-  Sphere, Travel. Tap a feed card to edit or delete a check-in.
+  Activity types: Biz dev, Buyer, Landlord, Renter, Seller, Social, Sphere,
+  Travel. Tap a feed card to edit or delete a check-in.
 - **This Year** — a 12-month × 31-day calendar (months across, days down) where
-  each square is shaded by that day's average temperature, blue (cold) → red
-  (hot). Below it, a chart plots the daily 10-year Treasury yield (FRED) against
-  the number of Buyer/Seller appointments. Tap a day to inspect its check-ins.
+  each square is shaded by that day's temperature, blue (0°C) → red (35°C).
+  Check-in days use the recorded temperature; other past days are backfilled
+  from historical daily means. Below it, two panels plot the daily 10-year
+  Treasury yield (FRED, carried forward across every day) and Buyer/Seller
+  appointment counts. Tap a day to inspect its check-ins.
+- **Profile** — temperature unit, plus "where your time goes" (by activity) and
+  "who you spend your time with" (people tagged in check-ins, most-seen first).
 - **Map** — an interactive map (Leaflet + OpenStreetMap on web) with a pin for
   every check-in that recorded coordinates, colored by activity.
-- **Profile** — temperature unit, streak, and a breakdown of where your time goes.
 
 ## Tech
 

@@ -4,8 +4,8 @@ import { activityColor, theme } from "../lib/theme";
 import type { ActivityType } from "../lib/types";
 
 const ICONS: Record<ActivityType, keyof typeof Ionicons.glyphMap> = {
+  "Biz dev": "laptop",
   Buyer: "cart",
-  "Deep work / biz dev": "laptop",
   Landlord: "business",
   Renter: "key",
   Seller: "pricetag",

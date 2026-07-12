@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,6 +9,8 @@ import { useCheckIns, useSettings } from "../../lib/hooks";
 import { activityColor, theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import type { ActivityType } from "../../lib/types";
+
+const PERSON_COLORS = ["#4C8DFF", "#3DDC97", "#C792EA", "#F5B942", "#FF8DC7", "#4CD3E0"];
 
 export default function ProfileScreen() {
   const { settings, update } = useSettings();
@@ -22,6 +25,19 @@ export default function ProfileScreen() {
     }
     const top = [...minutesByActivity.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
     return { totalMinutes, top };
+  }, [checkIns]);
+
+  // People tagged in check-ins, by how many check-ins they appear in (desc).
+  const people = useMemo(() => {
+    const countByPerson = new Map<string, number>();
+    for (const c of checkIns) {
+      for (const p of c.participants) {
+        const name = p.trim();
+        if (!name) continue;
+        countByPerson.set(name, (countByPerson.get(name) ?? 0) + 1);
+      }
+    }
+    return [...countByPerson.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [checkIns]);
 
   return (
@@ -61,6 +77,35 @@ export default function ProfileScreen() {
                 <Text style={styles.breakdownValue}>{formatDuration(minutes)}</Text>
               </View>
             ))}
+          </Section>
+        ) : null}
+
+        {people.length > 0 ? (
+          <Section title="Who you spend your time with">
+            {people.map(([name, count], i) => {
+              const color = PERSON_COLORS[i % PERSON_COLORS.length];
+              return (
+                <View key={name} style={styles.breakdownRow}>
+                  <View style={[styles.personBadge, { backgroundColor: color + "26", borderColor: color }]}>
+                    <Ionicons name="person" size={12} color={color} />
+                  </View>
+                  <Text style={styles.breakdownLabel} numberOfLines={1}>
+                    {name}
+                  </Text>
+                  <View style={styles.breakdownBarTrack}>
+                    <View
+                      style={[
+                        styles.breakdownBarFill,
+                        { width: `${Math.max(4, (count / people[0][1]) * 100)}%`, backgroundColor: color },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.breakdownValue}>
+                    {count}×
+                  </Text>
+                </View>
+              );
+            })}
           </Section>
         ) : null}
       </ScrollView>
@@ -140,6 +185,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing(2),
     marginBottom: theme.spacing(3),
+  },
+  personBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   breakdownLabel: {
     color: theme.color.textPrimary,

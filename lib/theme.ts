@@ -30,8 +30,8 @@ export const theme = {
 } as const;
 
 export const activityColors: Record<string, string> = {
+  "Biz dev": "#8B95FF",
   Buyer: "#3DDC97",
-  "Deep work / biz dev": "#8B95FF",
   Landlord: "#4C8DFF",
   Renter: "#C792EA",
   Seller: "#FF6154",
@@ -49,7 +49,7 @@ export function activityColor(activity: string): string {
 // (see YearScreen) so the full gradient is used and contrast stays strong; these
 // constants are only the fallback when there isn't enough data.
 export const TEMP_MIN_C = 0;
-export const TEMP_MAX_C = 30;
+export const TEMP_MAX_C = 35;
 
 export function tempToColor(celsius: number, minC = TEMP_MIN_C, maxC = TEMP_MAX_C): string {
   const span = maxC - minC || 1;

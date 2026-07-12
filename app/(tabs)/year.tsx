@@ -7,9 +7,10 @@ import YearGrid from "../../components/YearGrid";
 import YieldChart, { type YieldStatus } from "../../components/YieldChart";
 import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
 import { useCheckIns, useSettings } from "../../lib/hooks";
-import { TEMP_MAX_C, TEMP_MIN_C, theme } from "../../lib/theme";
+import { theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import { fetchTreasuryYields } from "../../lib/treasury";
+import { fetchDailyMeanTemps } from "../../lib/weather";
 
 export default function YearScreen() {
   const { checkIns } = useCheckIns();
@@ -20,6 +21,7 @@ export default function YearScreen() {
 
   const [yields, setYields] = useState<Map<string, number>>(new Map());
   const [yieldStatus, setYieldStatus] = useState<YieldStatus>("loading");
+  const [backfillTemps, setBackfillTemps] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +39,29 @@ export default function YearScreen() {
       cancelled = true;
     };
   }, [year]);
+
+  // Reference location for backfilling temperatures: the most recent check-in
+  // that recorded coordinates (checkIns are newest-first).
+  const refCoords = useMemo(() => {
+    for (const c of checkIns) {
+      if (c.latitude != null && c.longitude != null) return { lat: c.latitude, lon: c.longitude };
+    }
+    return null;
+  }, [checkIns]);
+
+  useEffect(() => {
+    if (!refCoords) {
+      setBackfillTemps(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchDailyMeanTemps(refCoords.lat, refCoords.lon, year).then((map) => {
+      if (!cancelled) setBackfillTemps(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refCoords?.lat, refCoords?.lon, year]);
 
   const years = useMemo(() => {
     const set = new Set<number>([currentYear]);
@@ -69,23 +94,6 @@ export default function YearScreen() {
     return { activeDays: dayData.size, totalMinutes, checkInCount };
   }, [dayData]);
 
-  // Fit the temperature gradient to the year's actual range so the full
-  // blue→red spread is used (strong contrast), with a floor so a mild year
-  // still shows variation.
-  const tempDomain = useMemo(() => {
-    const temps = [...dayData.values()].map((d) => d.avgTempC).filter((v): v is number => v != null);
-    if (temps.length < 2) return { min: TEMP_MIN_C, max: TEMP_MAX_C };
-    let min = Math.min(...temps);
-    let max = Math.max(...temps);
-    const MIN_SPAN = 6;
-    if (max - min < MIN_SPAN) {
-      const mid = (min + max) / 2;
-      min = mid - MIN_SPAN / 2;
-      max = mid + MIN_SPAN / 2;
-    }
-    return { min, max };
-  }, [dayData]);
-
   const selectedSummary: DaySummary | null = selectedDate ? dayData.get(selectedDate) ?? null : null;
 
   return (
@@ -94,7 +102,7 @@ export default function YearScreen() {
         <Text style={styles.title}>This Year</Text>
         <Text style={styles.subtitle}>
           Every square is a day of {year} (months across, days down), shaded by that day's average
-          temperature — blue is cold, red is hot.
+          temperature — blue (0°C) to red (35°C). Days without a check-in are backfilled from history.
         </Text>
 
         {years.length > 1 ? (
@@ -117,11 +125,10 @@ export default function YearScreen() {
           <YearGrid
             year={year}
             dayData={dayData}
+            backfillTemps={backfillTemps}
             selectedDate={selectedDate}
             onSelectDay={setSelectedDate}
             temperatureUnit={settings.temperatureUnit}
-            tempMin={tempDomain.min}
-            tempMax={tempDomain.max}
           />
         </View>
 

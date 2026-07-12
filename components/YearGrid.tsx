@@ -14,19 +14,17 @@ const MAX_DAYS = 31;
 const YearGrid = memo(function YearGrid({
   year,
   dayData,
+  backfillTemps,
   onSelectDay,
   selectedDate,
   temperatureUnit,
-  tempMin = TEMP_MIN_C,
-  tempMax = TEMP_MAX_C,
 }: {
   year: number;
   dayData: Map<string, DaySummary>;
+  backfillTemps?: Map<string, number>;
   onSelectDay?: (date: string) => void;
   selectedDate?: string | null;
   temperatureUnit: "C" | "F";
-  tempMin?: number;
-  tempMax?: number;
 }) {
   const now = useMemo(() => new Date(), []);
   const todayKey = localDayKey(now);
@@ -78,9 +76,13 @@ const YearGrid = memo(function YearGrid({
                   const isSelected = key === selectedDate;
                   const isFuture = key > todayKey;
 
+                  // Prefer the day's recorded check-in temperature; otherwise
+                  // backfill non-check-in days with the historical daily mean.
+                  const backfill = backfillTemps?.get(key);
                   let backgroundColor: string;
-                  if (summary?.avgTempC != null) backgroundColor = tempToColor(summary.avgTempC, tempMin, tempMax);
+                  if (summary?.avgTempC != null) backgroundColor = tempToColor(summary.avgTempC);
                   else if (summary) backgroundColor = theme.color.textMuted; // checked in, no temp
+                  else if (!isFuture && backfill != null) backgroundColor = tempToColor(backfill);
                   else if (isFuture) backgroundColor = "transparent";
                   else backgroundColor = theme.color.surfaceRaised;
 
@@ -106,33 +108,25 @@ const YearGrid = memo(function YearGrid({
             );
           })}
 
-          <Legend temperatureUnit={temperatureUnit} tempMin={tempMin} tempMax={tempMax} />
+          <Legend temperatureUnit={temperatureUnit} />
         </View>
       ) : null}
     </View>
   );
 });
 
-function Legend({
-  temperatureUnit,
-  tempMin,
-  tempMax,
-}: {
-  temperatureUnit: "C" | "F";
-  tempMin: number;
-  tempMax: number;
-}) {
+function Legend({ temperatureUnit }: { temperatureUnit: "C" | "F" }) {
   const steps = 10;
   return (
     <View style={styles.legend}>
-      <Text style={styles.legendLabel}>{formatTemperature(tempMin, temperatureUnit)}</Text>
+      <Text style={styles.legendLabel}>{formatTemperature(TEMP_MIN_C, temperatureUnit)}</Text>
       <View style={styles.legendBar}>
         {Array.from({ length: steps }, (_, i) => {
-          const c = tempMin + ((tempMax - tempMin) * i) / (steps - 1);
-          return <View key={i} style={[styles.legendSwatch, { backgroundColor: tempToColor(c, tempMin, tempMax) }]} />;
+          const c = TEMP_MIN_C + ((TEMP_MAX_C - TEMP_MIN_C) * i) / (steps - 1);
+          return <View key={i} style={[styles.legendSwatch, { backgroundColor: tempToColor(c) }]} />;
         })}
       </View>
-      <Text style={styles.legendLabel}>{formatTemperature(tempMax, temperatureUnit)}</Text>
+      <Text style={styles.legendLabel}>{formatTemperature(TEMP_MAX_C, temperatureUnit)}</Text>
       <View style={[styles.legendGray, { backgroundColor: theme.color.textMuted }]} />
       <Text style={styles.legendLabel}>no temp</Text>
     </View>

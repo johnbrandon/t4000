@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, Line, LinearGradient, Path, Polyline, Rect, Stop, Text as SvgText } from "react-native-svg";
-import { dateKey, daysInMonth, MONTH_INITIALS } from "../lib/dayGrid";
+import { dateKey, daysInMonth, localDayKey, MONTH_INITIALS } from "../lib/dayGrid";
 import { theme } from "../lib/theme";
 
 // Match the app's sans-serif UI font (SVG text otherwise defaults to serif on web).
@@ -28,18 +28,31 @@ export default function YieldChart({
 }) {
   const [width, setWidth] = useState(0);
 
+  const todayKey = localDayKey(new Date());
+
   const days = useMemo(() => {
     const list: { index: number; key: string; count: number; yield: number | null }[] = [];
     let index = 0;
+    // Carry the last known yield forward so weekends/holidays (and any gap up to
+    // today) are backfilled and the line covers every day. Future days stay null.
+    let lastYield: number | null = null;
     for (let m = 0; m < 12; m++) {
       for (let d = 1; d <= daysInMonth(year, m); d++) {
         const key = dateKey(year, m, d);
-        list.push({ index, key, count: appointmentsByDay.get(key) ?? 0, yield: yields.get(key) ?? null });
+        const raw = yields.get(key);
+        let value: number | null = null;
+        if (typeof raw === "number") {
+          value = raw;
+          lastYield = raw;
+        } else if (lastYield != null && key <= todayKey) {
+          value = lastYield;
+        }
+        list.push({ index, key, count: appointmentsByDay.get(key) ?? 0, yield: value });
         index += 1;
       }
     }
     return list;
-  }, [year, appointmentsByDay, yields]);
+  }, [year, appointmentsByDay, yields, todayKey]);
 
   const monthStarts = useMemo(() => {
     const starts: { label: string; index: number }[] = [];

@@ -171,6 +171,43 @@ export async function fetchWeatherAt(
   return forecast ? snapshotFromHourly(forecast, when) : null;
 }
 
+// Daily mean temperature for every day of a year at one location (Open-Meteo
+// archive), used to backfill the calendar on days without a check-in. Cached
+// per location+year for the session.
+const dailyMeanCache = new Map<string, Map<string, number>>();
+
+export async function fetchDailyMeanTemps(
+  latitude: number,
+  longitude: number,
+  year: number
+): Promise<Map<string, number>> {
+  const cacheKey = `${latitude.toFixed(2)},${longitude.toFixed(2)},${year}`;
+  const cached = dailyMeanCache.get(cacheKey);
+  if (cached) return cached;
+
+  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${year}-01-01&end_date=${year}-12-31&daily=temperature_2m_mean&timezone=auto`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return new Map();
+    const data = await response.json();
+    const times: string[] = data.daily?.time ?? [];
+    const means: (number | null)[] = data.daily?.temperature_2m_mean ?? [];
+    const map = new Map<string, number>();
+    times.forEach((t, i) => {
+      const v = means[i];
+      if (typeof v === "number") map.set(t, v);
+    });
+    if (map.size > 0) dailyMeanCache.set(cacheKey, map);
+    return map;
+  } catch {
+    return new Map();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export function celsiusToFahrenheit(celsius: number): number {
   return (celsius * 9) / 5 + 32;
 }

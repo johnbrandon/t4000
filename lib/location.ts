@@ -97,12 +97,18 @@ const US_STATE_ABBR: Record<string, string> = {
   virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI", wyoming: "WY",
 };
 
+// Cardinal / intercardinal directions -> compass abbreviations (N, S, E, W, …).
+const DIRECTION_ABBR: Record<string, string> = {
+  north: "N", south: "S", east: "E", west: "W",
+  northeast: "NE", northwest: "NW", southeast: "SE", southwest: "SW",
+};
+
 function abbreviateStreet(road: string): string {
   return road
     .split(" ")
     .map((word) => {
       const key = word.toLowerCase().replace(/[.,]/g, "");
-      return STREET_ABBR[key] ?? word;
+      return DIRECTION_ABBR[key] ?? STREET_ABBR[key] ?? word;
     })
     .join(" ");
 }
@@ -138,9 +144,8 @@ export async function reverseGeocode(coords: Coordinates): Promise<string | null
     const street = [a.house_number, road].filter(Boolean).join(" ");
     const city = a.city || a.town || a.village || a.hamlet || a.suburb || a.county;
     const state = abbreviateState(a.state, a["ISO3166-2-lvl4"]);
-    const zip = typeof a.postcode === "string" ? (a.postcode.match(/\d{5}/)?.[0] ?? null) : null;
 
-    const cityState = [city, [state, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    const cityState = [city, state].filter(Boolean).join(", ");
     const parts = [street, cityState].filter(Boolean);
     if (parts.length) return parts.join(", ");
     return typeof data.display_name === "string" ? data.display_name : null;
