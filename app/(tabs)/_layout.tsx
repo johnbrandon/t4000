@@ -30,9 +30,9 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="weeks"
+        name="year"
         options={{
-          title: "4000 Weeks",
+          title: "This Year",
           tabBarIcon: ({ color, size }) => <Ionicons name="grid" size={size} color={color} />,
         }}
       />

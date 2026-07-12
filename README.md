@@ -3,8 +3,8 @@
 A React Native + Expo progressive web app for time-tracking via location
 check-ins, inspired by **Foursquare** (place check-ins), **Strava** (activity
 feed) and **Whoop** (personal metrics). Each check-in is stored locally and
-rolls up into a life-in-weeks visualization inspired by Oliver Burkeman's
-_Four Thousand Weeks_.
+rolls up into a year-at-a-glance calendar — one square per day, colored by
+that day's main activity.
 
 ## What a check-in captures
 
@@ -20,10 +20,10 @@ _Four Thousand Weeks_.
 
 - **Feed** — reverse-chronological activity feed with week stats and a streak.
 - **Check In** — capture a new check-in; auto-fetches location and weather.
-- **4000 Weeks** — a grid where every square is a week of your life; weeks you
-  checked in are colored by their dominant activity. Tap a week to inspect it.
-- **Profile** — birth date, life-expectancy in weeks, temperature unit, and a
-  breakdown of where your time goes.
+  Location is best-effort: a check-in still saves if location is unavailable.
+- **This Year** — a calendar where every square is a day of the year; days you
+  checked in are colored by their dominant activity. Tap a day to inspect it.
+- **Profile** — temperature unit, streak, and a breakdown of where your time goes.
 
 ## Tech
 
@@ -82,16 +82,16 @@ app/                     expo-router routes
   (tabs)/                bottom-tab navigator
     index.tsx            Feed
     check-in.tsx         New check-in
-    weeks.tsx            4000 Weeks visualization
+    year.tsx             This Year (day calendar) visualization
     profile.tsx          Profile & settings
 components/              presentational UI (cards, chips, grid, icons)
 lib/                     data + domain logic
-  db.ts                 SQLite schema, CRUD, change subscription
+  db.ts                 SQLite schema, migrations, CRUD, change subscription
   weather.ts            Open-Meteo client + unit helpers
-  location.ts           geolocation + reverse geocoding
-  weeksGrid.ts          bucket check-ins into life-weeks
+  location.ts           geolocation (web + native) + reverse geocoding
+  dayGrid.ts            bucket check-ins into calendar days
   stats.ts              feed stats (streaks, weekly totals)
-  time.ts               week math & formatting
+  time.ts               duration & relative-time formatting
   theme.ts              design tokens
 public/                 PWA manifest, service worker, icons
 ```

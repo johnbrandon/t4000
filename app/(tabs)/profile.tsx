@@ -1,21 +1,18 @@
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useMemo } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ActivityIcon from "../../components/ActivityIcon";
 import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
 import { useCheckIns, useSettings } from "../../lib/hooks";
+import { computeStats } from "../../lib/stats";
 import { activityColor, theme } from "../../lib/theme";
-import { ageYears, formatDuration } from "../../lib/time";
+import { formatDuration } from "../../lib/time";
 import type { ActivityType } from "../../lib/types";
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function ProfileScreen() {
   const { settings, update } = useSettings();
   const { checkIns } = useCheckIns();
-  const [birthDateDraft, setBirthDateDraft] = useState(settings.birthDate ?? "");
-  const [saved, setSaved] = useState(false);
 
   const totals = useMemo(() => {
     const minutesByActivity = new Map<ActivityType, number>();
@@ -28,14 +25,7 @@ export default function ProfileScreen() {
     return { totalMinutes, top };
   }, [checkIns]);
 
-  const age = settings.birthDate ? ageYears(new Date(settings.birthDate)) : null;
-
-  function saveBirthDate() {
-    if (!DATE_PATTERN.test(birthDateDraft)) return;
-    update("birthDate", birthDateDraft);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
-  }
+  const streak = useMemo(() => computeStats(checkIns).currentStreakDays, [checkIns]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -45,37 +35,8 @@ export default function ProfileScreen() {
         <View style={styles.statsRow}>
           <StatCard label="Check-ins" value={String(checkIns.length)} accent={theme.color.accent} />
           <StatCard label="Total time" value={formatDuration(totals.totalMinutes)} accent={theme.color.accentBlue} />
-          <StatCard label="Age" value={age ? `${age.toFixed(1)}y` : "—"} accent={theme.color.accentAlt} />
+          <StatCard label="Streak" value={`${streak}d`} accent={theme.color.accentAlt} />
         </View>
-
-        <Section title="Birth date (for the 4000 Weeks view)">
-          <View style={styles.row}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={theme.color.textMuted}
-              value={birthDateDraft}
-              onChangeText={setBirthDateDraft}
-              autoCapitalize="none"
-            />
-            <Pressable style={styles.saveButton} onPress={saveBirthDate}>
-              <Text style={styles.saveLabel}>{saved ? "Saved" : "Save"}</Text>
-            </Pressable>
-          </View>
-        </Section>
-
-        <Section title="Life expectancy (weeks)">
-          <View style={styles.chipWrap}>
-            {[3500, 4000, 4500, 5000].map((weeks) => (
-              <Chip
-                key={weeks}
-                label={String(weeks)}
-                selected={settings.lifeExpectancyWeeks === weeks}
-                onPress={() => update("lifeExpectancyWeeks", weeks)}
-              />
-            ))}
-          </View>
-        </Section>
 
         <Section title="Temperature unit">
           <View style={styles.chipWrap}>

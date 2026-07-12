@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,8 +32,9 @@ export default function CheckInScreen() {
   const [purpose, setPurpose] = useState("");
   const [participantInput, setParticipantInput] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
-  const [durationMinutes, setDurationMinutes] = useState("0");
+  const [durationMinutes, setDurationMinutes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
 
@@ -99,24 +99,25 @@ export default function CheckInScreen() {
   async function handleSubmit() {
     const minutes = Number(durationMinutes);
     if (!minutes || minutes <= 0) {
-      Alert.alert("Add a duration", "How long was this activity, in minutes?");
+      // Alert has no implementation on react-native-web, so surface validation
+      // inline instead — otherwise the tap looks like it does nothing.
+      setFormError("Add how long the activity lasted (in minutes) before saving.");
       return;
     }
-    if (location.status !== "ready") {
-      Alert.alert("Location not ready", "We need your location to save a check-in.");
-      return;
-    }
-
+    setFormError(null);
     setSubmitting(true);
     try {
+      // Location is best-effort: if it isn't ready (permission denied, still
+      // resolving, or unavailable) the check-in still saves without coordinates.
+      const ready = location.status === "ready" ? location : null;
       await insertCheckIn({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        placeLabel: location.placeLabel,
-        temperatureC: location.weather?.temperatureC ?? null,
-        dewpointC: location.weather?.dewpointC ?? null,
-        weatherCondition: location.weather?.weatherCondition ?? null,
-        weatherCode: location.weather?.weatherCode ?? null,
+        latitude: ready?.coords.latitude ?? null,
+        longitude: ready?.coords.longitude ?? null,
+        placeLabel: ready?.placeLabel ?? null,
+        temperatureC: ready?.weather?.temperatureC ?? null,
+        dewpointC: ready?.weather?.dewpointC ?? null,
+        weatherCondition: ready?.weather?.weatherCondition ?? null,
+        weatherCode: ready?.weather?.weatherCode ?? null,
         durationMinutes: minutes,
         activityType,
         purpose: purpose.trim(),
@@ -125,11 +126,11 @@ export default function CheckInScreen() {
 
       setPurpose("");
       setParticipants([]);
-      setDurationMinutes("0");
+      setDurationMinutes("");
       setElapsedSeconds(0);
       router.push("/");
     } catch (err) {
-      Alert.alert("Couldn't save check-in", err instanceof Error ? err.message : "Unknown error");
+      setFormError(err instanceof Error ? err.message : "Couldn't save the check-in.");
     } finally {
       setSubmitting(false);
     }
@@ -217,6 +218,13 @@ export default function CheckInScreen() {
             ) : null}
           </Section>
 
+          {formError ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={16} color={theme.color.danger} />
+              <Text style={styles.errorText}>{formError}</Text>
+            </View>
+          ) : null}
+
           <Pressable
             style={[styles.submitButton, submitting && { opacity: 0.6 }]}
             onPress={handleSubmit}
@@ -256,8 +264,10 @@ function LocationCard({ state, onRetry }: { state: LocationState; onRetry: () =>
     return (
       <View style={styles.locationCard}>
         <Text style={styles.locationMuted}>{state.message}</Text>
-        <Pressable onPress={onRetry} style={styles.retryButton}>
-          <Text style={styles.retryLabel}>Try again</Text>
+        <Text style={styles.locationHint}>You can still save this check-in without a location.</Text>
+        <Pressable onPress={onRetry} style={styles.locationButton}>
+          <Ionicons name="location" size={16} color={theme.color.background} />
+          <Text style={styles.locationButtonLabel}>Use my location</Text>
         </Pressable>
       </View>
     );
@@ -398,6 +408,43 @@ const styles = StyleSheet.create({
     color: theme.color.accent,
     fontSize: theme.font.caption,
     fontWeight: "700",
+  },
+  locationHint: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.caption,
+    fontStyle: "italic",
+  },
+  locationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: theme.color.accent,
+    paddingHorizontal: theme.spacing(3),
+    paddingVertical: theme.spacing(2),
+    borderRadius: theme.radius.sm,
+    marginTop: theme.spacing(1),
+  },
+  locationButtonLabel: {
+    color: theme.color.background,
+    fontSize: theme.font.caption,
+    fontWeight: "700",
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: theme.color.danger + "1A",
+    borderWidth: 1,
+    borderColor: theme.color.danger + "55",
+    borderRadius: theme.radius.sm,
+    padding: theme.spacing(3),
+    marginTop: theme.spacing(2),
+  },
+  errorText: {
+    color: theme.color.danger,
+    fontSize: theme.font.caption,
+    flexShrink: 1,
   },
   submitButton: {
     backgroundColor: theme.color.accent,

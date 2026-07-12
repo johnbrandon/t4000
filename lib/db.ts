@@ -13,12 +13,14 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
       if (Platform.OS !== "web") {
         await db.execAsync("PRAGMA journal_mode = WAL;");
       }
+      // latitude/longitude are nullable so a check-in can still be saved when
+      // the device location is unavailable or the user declines the prompt.
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS check_ins (
           id TEXT PRIMARY KEY NOT NULL,
           created_at TEXT NOT NULL,
-          latitude REAL NOT NULL,
-          longitude REAL NOT NULL,
+          latitude REAL,
+          longitude REAL,
           place_label TEXT,
           temperature_c REAL,
           dewpoint_c REAL,
@@ -36,10 +38,45 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
           value TEXT NOT NULL
         );
       `);
+      await migrate(db);
       return db;
     });
   }
   return dbPromise;
+}
+
+// Early builds created check_ins with NOT NULL latitude/longitude. Rebuild the
+// table to the nullable schema so location-less check-ins can be saved. Guarded
+// by user_version and cheap (no rows exist until this fix ships).
+async function migrate(db: SQLite.SQLiteDatabase) {
+  const row = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
+  const version = row?.user_version ?? 0;
+  if (version < 1) {
+    await db.execAsync(`
+      BEGIN TRANSACTION;
+      CREATE TABLE check_ins_new (
+        id TEXT PRIMARY KEY NOT NULL,
+        created_at TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        place_label TEXT,
+        temperature_c REAL,
+        dewpoint_c REAL,
+        weather_condition TEXT,
+        weather_code INTEGER,
+        duration_minutes INTEGER NOT NULL,
+        activity_type TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        participants TEXT NOT NULL DEFAULT '[]'
+      );
+      INSERT INTO check_ins_new SELECT * FROM check_ins;
+      DROP TABLE check_ins;
+      ALTER TABLE check_ins_new RENAME TO check_ins;
+      CREATE INDEX IF NOT EXISTS idx_check_ins_created_at ON check_ins (created_at);
+      COMMIT;
+      PRAGMA user_version = 1;
+    `);
+  }
 }
 
 // --- change notifications so screens can refresh after a write ---
@@ -149,10 +186,6 @@ export async function getSettings(): Promise<Settings> {
   const rows = await db.getAllAsync<{ key: string; value: string }>(`SELECT key, value FROM settings`);
   const stored: Record<string, string> = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return {
-    birthDate: stored.birthDate ?? DEFAULT_SETTINGS.birthDate,
-    lifeExpectancyWeeks: stored.lifeExpectancyWeeks
-      ? Number(stored.lifeExpectancyWeeks)
-      : DEFAULT_SETTINGS.lifeExpectancyWeeks,
     temperatureUnit: (stored.temperatureUnit as Settings["temperatureUnit"]) ?? DEFAULT_SETTINGS.temperatureUnit,
   };
 }

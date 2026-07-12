@@ -20,8 +20,8 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 export interface CheckIn {
   id: string;
   createdAt: string; // ISO 8601
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   placeLabel: string | null;
   temperatureC: number | null;
   dewpointC: number | null;
@@ -36,13 +36,9 @@ export interface CheckIn {
 export type NewCheckIn = Omit<CheckIn, "id" | "createdAt">;
 
 export interface Settings {
-  birthDate: string | null; // YYYY-MM-DD
-  lifeExpectancyWeeks: number;
   temperatureUnit: "C" | "F";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  birthDate: null,
-  lifeExpectancyWeeks: 4000,
   temperatureUnit: "F",
 };

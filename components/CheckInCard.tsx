@@ -14,7 +14,10 @@ export default function CheckInCard({ checkIn, temperatureUnit }: { checkIn: Che
         <View style={styles.headerText}>
           <Text style={styles.title}>{checkIn.activityType}</Text>
           <Text style={styles.subtitle}>
-            {checkIn.placeLabel ?? `${checkIn.latitude.toFixed(3)}, ${checkIn.longitude.toFixed(3)}`}
+            {checkIn.placeLabel ??
+              (checkIn.latitude !== null && checkIn.longitude !== null
+                ? `${checkIn.latitude.toFixed(3)}, ${checkIn.longitude.toFixed(3)}`
+                : "No location")}
           </Text>
         </View>
         <Text style={styles.timestamp}>{formatRelativeTime(checkIn.createdAt)}</Text>
