@@ -2,6 +2,7 @@ export const ACTIVITY_TYPES = [
   "Biz dev",
   "Buyer",
   "Call",
+  "Coffee",
   "Email",
   "Landlord",
   "Other",
@@ -12,6 +13,15 @@ export const ACTIVITY_TYPES = [
   "Sphere",
   "Text",
   "Travel",
+] as const;
+
+// Interaction quality: a 5-step scale from -2 (very negative) to +2 (very positive).
+export const QUALITY_LEVELS = [
+  { value: 2, label: "Great" },
+  { value: 1, label: "Good" },
+  { value: 0, label: "Neutral" },
+  { value: -1, label: "Poor" },
+  { value: -2, label: "Bad" },
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -28,6 +38,7 @@ export interface CheckIn {
   weatherCode: number | null;
   durationMinutes: number;
   activityTypes: ActivityType[];
+  quality: number; // -2..+2 interaction quality
   purpose: string;
   participants: string[];
 }

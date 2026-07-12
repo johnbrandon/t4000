@@ -33,6 +33,7 @@ export const activityColors: Record<string, string> = {
   "Biz dev": "#8B95FF",
   Buyer: "#3DDC97",
   Call: "#FF9F45",
+  Coffee: "#B5835A",
   Email: "#34C3FF",
   Landlord: "#4C8DFF",
   Other: "#8A8A96",

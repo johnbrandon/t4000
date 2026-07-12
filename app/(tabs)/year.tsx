@@ -4,14 +4,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
 import AppointmentsChart from "../../components/AppointmentsChart";
+import DailyBarChart from "../../components/DailyBarChart";
+import QualityChart from "../../components/QualityChart";
 import YearGrid from "../../components/YearGrid";
 import YieldLineChart, { type YieldStatus } from "../../components/YieldLineChart";
 import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
 import { useCheckIns, useSettings } from "../../lib/hooks";
-import { theme } from "../../lib/theme";
+import { TEMP_MAX_C, TEMP_MIN_C, tempToColor, theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import { fetchTreasuryYields } from "../../lib/treasury";
-import { fetchDailyMeanTemps } from "../../lib/weather";
+import { fetchDailyWeather, formatTemperature } from "../../lib/weather";
 
 // Default reference location for backfilling temperature on days without a
 // check-in (New York, NY).
@@ -28,6 +30,7 @@ export default function YearScreen() {
   const [yields, setYields] = useState<Map<string, number>>(new Map());
   const [yieldStatus, setYieldStatus] = useState<YieldStatus>("loading");
   const [backfillTemps, setBackfillTemps] = useState<Map<string, number>>(new Map());
+  const [precip, setPrecip] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -48,8 +51,10 @@ export default function YearScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchDailyMeanTemps(BACKFILL_LAT, BACKFILL_LON, year).then((map) => {
-      if (!cancelled) setBackfillTemps(map);
+    fetchDailyWeather(BACKFILL_LAT, BACKFILL_LON, year).then((w) => {
+      if (cancelled) return;
+      setBackfillTemps(w.meanTempC);
+      setPrecip(w.precipMm);
     });
     return () => {
       cancelled = true;
@@ -75,6 +80,23 @@ export default function YearScreen() {
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return map;
+  }, [checkIns, year]);
+
+  // Average interaction quality per day for the quality chart.
+  const qualityByDay = useMemo(() => {
+    const sums = new Map<string, { total: number; count: number }>();
+    for (const c of checkIns) {
+      const date = new Date(c.createdAt);
+      if (date.getFullYear() !== year) continue;
+      const key = localDayKey(date);
+      const entry = sums.get(key) ?? { total: 0, count: 0 };
+      entry.total += c.quality;
+      entry.count += 1;
+      sums.set(key, entry);
+    }
+    const avg = new Map<string, number>();
+    for (const [key, { total, count }] of sums) avg.set(key, total / count);
+    return avg;
   }, [checkIns, year]);
 
   const yearStats = useMemo(() => {
@@ -124,6 +146,32 @@ export default function YearScreen() {
             temperatureUnit={settings.temperatureUnit}
           />
         </View>
+
+        <QualityChart year={year} qualityByDay={qualityByDay} />
+
+        <DailyBarChart
+          year={year}
+          data={backfillTemps}
+          title="Average Temperature"
+          subtitle={`Daily average temperature at the default location, ${year}.`}
+          domainMin={TEMP_MIN_C}
+          domainMax={TEMP_MAX_C}
+          colorFor={(v) => tempToColor(v)}
+          formatTop={() => formatTemperature(TEMP_MAX_C, settings.temperatureUnit)}
+          emptyNote="Temperature data unavailable right now."
+        />
+
+        <DailyBarChart
+          year={year}
+          data={precip}
+          title="Rainfall"
+          subtitle={`Total daily precipitation at the default location, ${year}.`}
+          domainMin={0}
+          domainMax={null}
+          colorFor={() => theme.color.accentBlue}
+          formatTop={(max) => `${Math.round(max)} mm`}
+          emptyNote="Rainfall data unavailable right now."
+        />
 
         <YieldLineChart year={year} yields={yields} status={yieldStatus} />
         <AppointmentsChart year={year} appointmentsByDay={appointmentsByDay} />

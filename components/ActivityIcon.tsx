@@ -7,6 +7,7 @@ const ICONS: Record<ActivityType, keyof typeof Ionicons.glyphMap> = {
   "Biz dev": "laptop",
   Buyer: "cart",
   Call: "call",
+  Coffee: "cafe",
   Email: "mail",
   Landlord: "business",
   Other: "ellipsis-horizontal",

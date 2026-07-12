@@ -174,17 +174,24 @@ export async function fetchWeatherAt(
 // Daily mean temperature for every day of a year at one location (Open-Meteo
 // archive), used to backfill the calendar on days without a check-in. Cached
 // per location+year for the session.
-const dailyMeanCache = new Map<string, Map<string, number>>();
-
-interface DailyResponse {
-  daily?: { time?: string[]; temperature_2m_mean?: (number | null)[] };
+export interface DailyWeather {
+  meanTempC: Map<string, number>; // temperature_2m_mean (°C)
+  precipMm: Map<string, number>; // precipitation_sum (mm)
 }
 
-function mergeDaily(target: Map<string, number>, data: DailyResponse | null) {
-  const times = data?.daily?.time ?? [];
-  const means = data?.daily?.temperature_2m_mean ?? [];
+const dailyWeatherCache = new Map<string, DailyWeather>();
+
+const DAILY_VARS = "temperature_2m_mean,precipitation_sum";
+
+interface DailyResponse {
+  daily?: Record<string, (number | null)[] | string[] | undefined> & { time?: string[] };
+}
+
+function mergeVar(target: Map<string, number>, data: DailyResponse | null, variable: string) {
+  const times = (data?.daily?.time ?? []) as string[];
+  const values = (data?.daily?.[variable] ?? []) as (number | null)[];
   times.forEach((t, i) => {
-    const v = means[i];
+    const v = values[i];
     if (typeof v === "number") target.set(t, v);
   });
 }
@@ -203,36 +210,34 @@ async function fetchDaily(url: string): Promise<DailyResponse | null> {
   }
 }
 
-export async function fetchDailyMeanTemps(
-  latitude: number,
-  longitude: number,
-  year: number
-): Promise<Map<string, number>> {
+// Daily mean temperature and total precipitation for every day of a year at a
+// location. End date is today for the current year; the recent archive lag is
+// filled from the forecast API. Cached per location+year.
+export async function fetchDailyWeather(latitude: number, longitude: number, year: number): Promise<DailyWeather> {
   const cacheKey = `${latitude.toFixed(2)},${longitude.toFixed(2)},${year}`;
-  const cached = dailyMeanCache.get(cacheKey);
+  const cached = dailyWeatherCache.get(cacheKey);
   if (cached) return cached;
 
+  const result: DailyWeather = { meanTempC: new Map(), precipMm: new Map() };
   const now = new Date();
   const nowYear = now.getFullYear();
-  if (year > nowYear) return new Map(); // no history for a future year
+  if (year > nowYear) return result; // no history for a future year
 
-  const map = new Map<string, number>();
-
-  // End date is today for the current year (the archive only rejects dates
-  // strictly in the future), or the year's end for past years.
   const archiveEnd = year < nowYear ? `${year}-12-31` : localDateKey(now);
-  const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${year}-01-01&end_date=${archiveEnd}&daily=temperature_2m_mean&timezone=auto`;
-  mergeDaily(map, await fetchDaily(archiveUrl));
+  const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${year}-01-01&end_date=${archiveEnd}&daily=${DAILY_VARS}&timezone=auto`;
+  const archive = await fetchDaily(archiveUrl);
+  mergeVar(result.meanTempC, archive, "temperature_2m_mean");
+  mergeVar(result.precipMm, archive, "precipitation_sum");
 
-  // The archive lags a few days; fill the most recent days for the current year
-  // from the forecast API so every day up to today is covered.
   if (year === nowYear) {
-    const forecastUrl = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_mean&past_days=14&forecast_days=1&timezone=auto`;
-    mergeDaily(map, await fetchDaily(forecastUrl));
+    const forecastUrl = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&daily=${DAILY_VARS}&past_days=14&forecast_days=1&timezone=auto`;
+    const forecast = await fetchDaily(forecastUrl);
+    mergeVar(result.meanTempC, forecast, "temperature_2m_mean");
+    mergeVar(result.precipMm, forecast, "precipitation_sum");
   }
 
-  if (map.size > 0) dailyMeanCache.set(cacheKey, map);
-  return map;
+  if (result.meanTempC.size > 0 || result.precipMm.size > 0) dailyWeatherCache.set(cacheKey, result);
+  return result;
 }
 
 export function celsiusToFahrenheit(celsius: number): number {

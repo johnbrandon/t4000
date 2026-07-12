@@ -95,7 +95,7 @@ export default function FeedScreen() {
             <View style={styles.empty}>
               <Ionicons name="pulse-outline" size={40} color={theme.color.textMuted} />
               <Text style={styles.emptyTitle}>No check-ins yet</Text>
-              <Text style={styles.emptyBody}>Log your first activity to start filling in your year.</Text>
+              <Text style={styles.emptyBody}>Log your first interaction to start filling in your year.</Text>
             </View>
           ) : null
         }

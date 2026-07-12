@@ -38,6 +38,7 @@ export default function CheckInCard({
 
       <View style={styles.statsRow}>
         <Stat icon="time-outline" label={formatDuration(checkIn.durationMinutes)} />
+        <QualityStat value={checkIn.quality} />
         <Stat icon="thermometer-outline" label={formatTemperature(checkIn.temperatureC, temperatureUnit)} />
         <Stat icon="water-outline" label={`${formatTemperature(checkIn.dewpointC, temperatureUnit)} dp`} />
         {checkIn.weatherCondition ? <Stat icon="partly-sunny-outline" label={checkIn.weatherCondition} /> : null}
@@ -58,6 +59,17 @@ function Stat({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: st
     <View style={styles.stat}>
       <Ionicons name={icon} size={14} color={theme.color.textMuted} />
       <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function QualityStat({ value }: { value: number }) {
+  const color = value > 0 ? theme.color.accent : value < 0 ? theme.color.danger : theme.color.textMuted;
+  const icon = value > 0 ? "happy-outline" : value < 0 ? "sad-outline" : "remove-outline";
+  return (
+    <View style={styles.stat}>
+      <Ionicons name={icon} size={14} color={color} />
+      <Text style={[styles.statLabel, { color }]}>{value > 0 ? `+${value}` : `${value}`}</Text>
     </View>
   );
 }

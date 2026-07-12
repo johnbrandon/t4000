@@ -17,7 +17,7 @@ import Chip from "../../components/Chip";
 import { deleteCheckIn, getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
 import { activityColor, theme } from "../../lib/theme";
-import { ACTIVITY_TYPES, type ActivityType } from "../../lib/types";
+import { ACTIVITY_TYPES, QUALITY_LEVELS, type ActivityType } from "../../lib/types";
 import { fetchWeather, fetchWeatherAt, formatTemperature, type WeatherSnapshot } from "../../lib/weather";
 
 type Mode = "now" | "past";
@@ -58,6 +58,7 @@ export default function CheckInScreen() {
   const editing = editId !== null;
 
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
+  const [quality, setQuality] = useState(0);
 
   function toggleActivity(activity: ActivityType) {
     setActivityTypes((prev) =>
@@ -117,6 +118,7 @@ export default function CheckInScreen() {
     getCheckIn(editId).then((c) => {
       if (!c) return;
       setActivityTypes(c.activityTypes);
+      setQuality(c.quality);
       setPurpose(c.purpose);
       setParticipants(c.participants);
       setDurationMinutes(String(c.durationMinutes));
@@ -282,6 +284,7 @@ export default function CheckInScreen() {
       weatherCode: ready?.weather?.weatherCode ?? null,
       durationMinutes: minutes,
       activityTypes,
+      quality,
       purpose: purpose.trim(),
       participants,
     });
@@ -339,6 +342,7 @@ export default function CheckInScreen() {
       weatherCode: weather?.weatherCode ?? null,
       durationMinutes: minutes,
       activityTypes,
+      quality,
       purpose: purpose.trim(),
       participants,
     };
@@ -432,7 +436,7 @@ export default function CheckInScreen() {
             </>
           )}
 
-          <Section title="Activity (choose one or more)">
+          <Section title="Interactions (choose one or more)">
             <View style={styles.chipWrap}>
               {ACTIVITY_TYPES.map((activity) => (
                 <Chip
@@ -443,6 +447,31 @@ export default function CheckInScreen() {
                   onPress={() => toggleActivity(activity)}
                 />
               ))}
+            </View>
+          </Section>
+
+          <Section title="Interaction quality">
+            <View style={styles.qualityRow}>
+              {QUALITY_LEVELS.map((level) => {
+                const active = quality === level.value;
+                const color =
+                  level.value > 0 ? theme.color.accent : level.value < 0 ? theme.color.danger : theme.color.textMuted;
+                return (
+                  <Pressable
+                    key={level.value}
+                    style={[
+                      styles.qualityButton,
+                      active && { backgroundColor: color + "26", borderColor: color },
+                    ]}
+                    onPress={() => setQuality(level.value)}
+                  >
+                    <Text style={[styles.qualityValue, active && { color }]}>
+                      {level.value > 0 ? `+${level.value}` : `${level.value}`}
+                    </Text>
+                    <Text style={[styles.qualityLabel, active && { color }]}>{level.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </Section>
 
@@ -666,6 +695,29 @@ const styles = StyleSheet.create({
   chipWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
+  },
+  qualityRow: {
+    flexDirection: "row",
+    gap: theme.spacing(2),
+  },
+  qualityButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: theme.spacing(2),
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surface,
+  },
+  qualityValue: {
+    color: theme.color.textSecondary,
+    fontSize: theme.font.subtitle,
+    fontWeight: "800",
+  },
+  qualityLabel: {
+    color: theme.color.textMuted,
+    fontSize: 10,
+    marginTop: 2,
   },
   input: {
     backgroundColor: theme.color.surface,

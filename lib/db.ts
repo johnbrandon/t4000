@@ -29,6 +29,7 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
           duration_minutes INTEGER NOT NULL,
           activity_type TEXT NOT NULL,
           activity_types TEXT,
+          quality INTEGER NOT NULL DEFAULT 0,
           purpose TEXT NOT NULL,
           participants TEXT NOT NULL DEFAULT '[]'
         );
@@ -91,6 +92,9 @@ async function migrate(db: SQLite.SQLiteDatabase) {
   if (!info.some((c) => c.name === "activity_types")) {
     await db.execAsync("ALTER TABLE check_ins ADD COLUMN activity_types TEXT");
   }
+  if (!info.some((c) => c.name === "quality")) {
+    await db.execAsync("ALTER TABLE check_ins ADD COLUMN quality INTEGER NOT NULL DEFAULT 0");
+  }
   // Backfill activity_types from the legacy single activity_type.
   const rows = await db.getAllAsync<{ id: string; activity_type: string }>(
     "SELECT id, activity_type FROM check_ins WHERE activity_types IS NULL"
@@ -130,6 +134,7 @@ interface CheckInRow {
   duration_minutes: number;
   activity_type: string;
   activity_types: string | null;
+  quality: number | null;
   purpose: string;
   participants: string;
 }
@@ -159,6 +164,7 @@ function rowToCheckIn(row: CheckInRow): CheckIn {
     weatherCode: row.weather_code,
     durationMinutes: row.duration_minutes,
     activityTypes: parseActivityTypes(row),
+    quality: typeof row.quality === "number" ? row.quality : 0,
     purpose: row.purpose,
     participants: JSON.parse(row.participants || "[]"),
   };
@@ -178,8 +184,8 @@ export async function insertCheckIn(input: NewCheckIn, createdAt?: string): Prom
   const activities = checkIn.activityTypes.length ? checkIn.activityTypes : (["Other"] as CheckIn["activityTypes"]);
   await db.runAsync(
     `INSERT INTO check_ins
-      (id, created_at, latitude, longitude, place_label, temperature_c, dewpoint_c, weather_condition, weather_code, duration_minutes, activity_type, activity_types, purpose, participants)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, created_at, latitude, longitude, place_label, temperature_c, dewpoint_c, weather_condition, weather_code, duration_minutes, activity_type, activity_types, quality, purpose, participants)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       checkIn.id,
       checkIn.createdAt,
@@ -193,6 +199,7 @@ export async function insertCheckIn(input: NewCheckIn, createdAt?: string): Prom
       checkIn.durationMinutes,
       activities[0],
       JSON.stringify(activities),
+      checkIn.quality,
       checkIn.purpose,
       JSON.stringify(checkIn.participants ?? []),
     ]
@@ -207,7 +214,7 @@ export async function updateCheckIn(id: string, input: NewCheckIn, createdAt: st
   await db.runAsync(
     `UPDATE check_ins SET
        created_at = ?, latitude = ?, longitude = ?, place_label = ?, temperature_c = ?, dewpoint_c = ?,
-       weather_condition = ?, weather_code = ?, duration_minutes = ?, activity_type = ?, activity_types = ?, purpose = ?, participants = ?
+       weather_condition = ?, weather_code = ?, duration_minutes = ?, activity_type = ?, activity_types = ?, quality = ?, purpose = ?, participants = ?
      WHERE id = ?`,
     [
       createdAt,
@@ -221,6 +228,7 @@ export async function updateCheckIn(id: string, input: NewCheckIn, createdAt: st
       input.durationMinutes,
       activities[0],
       JSON.stringify(activities),
+      input.quality,
       input.purpose,
       JSON.stringify(input.participants ?? []),
       id,
