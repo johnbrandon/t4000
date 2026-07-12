@@ -9,7 +9,7 @@ that day's main activity.
 ## What a check-in captures
 
 - Latitude & longitude (device geolocation, or entered manually for past check-ins)
-- Place label (keyless reverse geocoding)
+- Street address for those coordinates (keyless reverse geocoding via OpenStreetMap Nominatim)
 - Temperature, weather condition & dewpoint (Open-Meteo — current or historical, keyless)
 - Length of activity (manual entry or built-in stopwatch)
 - Type of activity (Run, Ride, Strength, Work, Meal, …)
@@ -18,14 +18,17 @@ that day's main activity.
 
 ## Screens
 
-- **Feed** — reverse-chronological activity feed with week stats and a streak.
+- **Feed** — reverse-chronological, infinitely-scrolling activity feed with
+  week stats. Tap any check-in to edit and re-save it.
 - **Check In** — capture a check-in **now** (auto-fetches location + weather), or
-  **in the past** by entering a date, time, and coordinates — historical
-  temperature/weather/dewpoint are looked up from Open-Meteo's archive.
-  Location is best-effort: a check-in still saves if location is unavailable.
+  **in the past** by entering a date, time, and coordinates — the street address
+  is resolved live and historical temperature/weather/dewpoint are looked up from
+  Open-Meteo's archive. Location is best-effort: a check-in still saves without it.
+  Activity types: Buyer, Landlord, Renter, Seller, Social, Sphere of influence, Travel.
 - **This Year** — a 12-month × 31-day calendar (months across, days down) where
   each square is shaded by that day's average temperature, blue (cold) → red
-  (hot). Tap a day to inspect its check-ins.
+  (hot). Below it, a chart plots the daily 10-year Treasury yield (FRED) against
+  the number of Buyer/Seller appointments. Tap a day to inspect its check-ins.
 - **Map** — an interactive map (Leaflet + OpenStreetMap on web) with a pin for
   every check-in that recorded coordinates, colored by activity.
 - **Profile** — temperature unit, streak, and a breakdown of where your time goes.

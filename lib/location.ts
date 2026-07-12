@@ -60,20 +60,29 @@ export function getCurrentCoordinates(): Promise<Coordinates> {
   return Platform.OS === "web" ? getWebCoordinates() : getNativeCoordinates();
 }
 
-// Keyless reverse geocoding via BigDataCloud's free client endpoint. Works
-// the same way on native and web, unlike expo-location's reverseGeocodeAsync
-// which has no web implementation.
+// Keyless reverse geocoding to a street-level address via OpenStreetMap's
+// Nominatim service. Composes a concise address (house number + street, city,
+// state) and falls back to Nominatim's full display_name.
 export async function reverseGeocode(coords: Coordinates): Promise<string | null> {
   try {
-    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.latitude}&longitude=${coords.longitude}&localityLanguage=en`;
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=jsonv2&addressdetails=1&zoom=18`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const response = await fetch(url, { signal: controller.signal });
+    const timeout = setTimeout(() => controller.abort(), 9000);
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
     clearTimeout(timeout);
     if (!response.ok) return null;
     const data = await response.json();
-    const parts = [data.locality, data.principalSubdivisionCode || data.principalSubdivision].filter(Boolean);
-    return parts.length ? parts.join(", ") : data.countryName ?? null;
+    const a = data.address ?? {};
+
+    const street = [a.house_number, a.road].filter(Boolean).join(" ");
+    const city = a.city || a.town || a.village || a.hamlet || a.suburb || a.county;
+    const region = a.state || a.region;
+    const parts = [street, city, region].filter(Boolean);
+    if (parts.length) return parts.join(", ");
+    return typeof data.display_name === "string" ? data.display_name : null;
   } catch {
     return null;
   }

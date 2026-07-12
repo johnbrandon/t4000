@@ -30,20 +30,13 @@ export const theme = {
 } as const;
 
 export const activityColors: Record<string, string> = {
-  Run: "#3DDC97",
-  Walk: "#7FE0B8",
-  Ride: "#4C8DFF",
-  Strength: "#FF6154",
-  Yoga: "#C792EA",
-  Swim: "#3ABEFF",
-  Hike: "#A0D468",
-  Work: "#9B9BA8",
-  Meeting: "#61616D",
-  Meal: "#F5B942",
+  Buyer: "#3DDC97",
+  Landlord: "#4C8DFF",
+  Renter: "#C792EA",
+  Seller: "#FF6154",
   Social: "#FF8DC7",
-  Travel: "#4CD3E0",
-  Rest: "#61616D",
-  Other: "#8A8A96",
+  "Sphere of influence": "#4CD3E0",
+  Travel: "#F5B942",
 };
 
 export function activityColor(activity: string): string {

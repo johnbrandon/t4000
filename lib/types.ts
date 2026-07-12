@@ -1,18 +1,11 @@
 export const ACTIVITY_TYPES = [
-  "Run",
-  "Walk",
-  "Ride",
-  "Strength",
-  "Yoga",
-  "Swim",
-  "Hike",
-  "Work",
-  "Meeting",
-  "Meal",
+  "Buyer",
+  "Landlord",
+  "Renter",
+  "Seller",
   "Social",
+  "Sphere of influence",
   "Travel",
-  "Rest",
-  "Other",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];

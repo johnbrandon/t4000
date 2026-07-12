@@ -1,14 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "../lib/theme";
 import { formatDuration, formatRelativeTime } from "../lib/time";
 import type { CheckIn } from "../lib/types";
 import { formatTemperature } from "../lib/weather";
 import ActivityIcon from "./ActivityIcon";
 
-export default function CheckInCard({ checkIn, temperatureUnit }: { checkIn: CheckIn; temperatureUnit: "C" | "F" }) {
+export default function CheckInCard({
+  checkIn,
+  temperatureUnit,
+  onPress,
+}: {
+  checkIn: CheckIn;
+  temperatureUnit: "C" | "F";
+  onPress?: () => void;
+}) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && onPress ? styles.cardPressed : null]}
+      onPress={onPress}
+    >
       <View style={styles.row}>
         <ActivityIcon activity={checkIn.activityType} />
         <View style={styles.headerText}>
@@ -38,7 +49,7 @@ export default function CheckInCard({ checkIn, temperatureUnit }: { checkIn: Che
           <Text style={styles.participants}>{checkIn.participants.join(", ")}</Text>
         </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -59,6 +70,10 @@ const styles = StyleSheet.create({
     borderColor: theme.color.border,
     padding: theme.spacing(4),
     marginBottom: theme.spacing(3),
+  },
+  cardPressed: {
+    borderColor: theme.color.accent,
+    opacity: 0.85,
   },
   row: {
     flexDirection: "row",

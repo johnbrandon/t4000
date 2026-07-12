@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
 import YearGrid from "../../components/YearGrid";
-import { summarizeByDay, type DaySummary } from "../../lib/dayGrid";
+import YieldChart, { type YieldStatus } from "../../components/YieldChart";
+import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
 import { useCheckIns, useSettings } from "../../lib/hooks";
 import { computeStats } from "../../lib/stats";
 import { theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
+import { fetchTreasuryYields } from "../../lib/treasury";
 
 export default function YearScreen() {
   const { checkIns } = useCheckIns();
@@ -17,6 +19,26 @@ export default function YearScreen() {
   const [year, setYear] = useState(currentYear);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  const [yields, setYields] = useState<Map<string, number>>(new Map());
+  const [yieldStatus, setYieldStatus] = useState<YieldStatus>("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setYieldStatus("loading");
+    fetchTreasuryYields(year)
+      .then((map) => {
+        if (cancelled) return;
+        setYields(map);
+        setYieldStatus(map.size > 0 ? "ready" : "error");
+      })
+      .catch(() => {
+        if (!cancelled) setYieldStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [year]);
+
   const years = useMemo(() => {
     const set = new Set<number>([currentYear]);
     for (const c of checkIns) set.add(new Date(c.createdAt).getFullYear());
@@ -24,6 +46,19 @@ export default function YearScreen() {
   }, [checkIns, currentYear]);
 
   const dayData = useMemo(() => summarizeByDay(checkIns, year), [checkIns, year]);
+
+  // Count buyer/seller check-ins per day for the appointment-vs-yield chart.
+  const appointmentsByDay = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of checkIns) {
+      if (c.activityType !== "Buyer" && c.activityType !== "Seller") continue;
+      const date = new Date(c.createdAt);
+      if (date.getFullYear() !== year) continue;
+      const key = localDayKey(date);
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return map;
+  }, [checkIns, year]);
 
   const yearStats = useMemo(() => {
     let totalMinutes = 0;
@@ -73,6 +108,13 @@ export default function YearScreen() {
             temperatureUnit={settings.temperatureUnit}
           />
         </View>
+
+        <YieldChart
+          year={year}
+          appointmentsByDay={appointmentsByDay}
+          yields={yields}
+          status={yieldStatus}
+        />
 
         {selectedSummary ? (
           <View style={styles.detailCard}>

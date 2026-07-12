@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CheckInCard from "../../components/CheckInCard";
 import StatCard from "../../components/StatCard";
@@ -10,19 +10,36 @@ import { computeStats } from "../../lib/stats";
 import { theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 
+const PAGE_SIZE = 20;
+
 export default function FeedScreen() {
   const { checkIns, loading, refresh } = useCheckIns();
   const { settings } = useSettings();
   const router = useRouter();
   const stats = useMemo(() => computeStats(checkIns), [checkIns]);
 
+  // Infinite scroll: reveal the feed in pages as the user reaches the end.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [checkIns.length === 0]);
+
+  const visible = useMemo(() => checkIns.slice(0, visibleCount), [checkIns, visibleCount]);
+  const hasMore = visibleCount < checkIns.length;
+
+  function loadMore() {
+    if (hasMore) setVisibleCount((c) => c + PAGE_SIZE);
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <FlatList
-        data={checkIns}
+        data={visible}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={theme.color.accent} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         ListHeaderComponent={
           <View>
             <View style={styles.header}>
@@ -34,17 +51,25 @@ export default function FeedScreen() {
             <View style={styles.statsRow}>
               <StatCard label="This week" value={String(stats.weekCount)} accent={theme.color.accent} />
               <StatCard label="Week time" value={formatDuration(stats.weekMinutes)} accent={theme.color.accentBlue} />
-              <StatCard label="Streak" value={`${stats.currentStreakDays}d`} accent={theme.color.accentAlt} />
             </View>
           </View>
         }
-        renderItem={({ item }) => <CheckInCard checkIn={item} temperatureUnit={settings.temperatureUnit} />}
+        renderItem={({ item }) => (
+          <CheckInCard
+            checkIn={item}
+            temperatureUnit={settings.temperatureUnit}
+            onPress={() => router.push({ pathname: "/check-in", params: { id: item.id } })}
+          />
+        )}
+        ListFooterComponent={
+          hasMore ? <ActivityIndicator style={styles.footer} color={theme.color.textMuted} /> : null
+        }
         ListEmptyComponent={
           !loading ? (
             <View style={styles.empty}>
               <Ionicons name="pulse-outline" size={40} color={theme.color.textMuted} />
               <Text style={styles.emptyTitle}>No check-ins yet</Text>
-              <Text style={styles.emptyBody}>Log your first activity to start filling in your weeks.</Text>
+              <Text style={styles.emptyBody}>Log your first activity to start filling in your year.</Text>
             </View>
           ) : null
         }
@@ -85,6 +110,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: theme.spacing(3),
     marginBottom: theme.spacing(5),
+  },
+  footer: {
+    marginVertical: theme.spacing(4),
   },
   empty: {
     alignItems: "center",

@@ -4,20 +4,13 @@ import { activityColor, theme } from "../lib/theme";
 import type { ActivityType } from "../lib/types";
 
 const ICONS: Record<ActivityType, keyof typeof Ionicons.glyphMap> = {
-  Run: "walk",
-  Walk: "footsteps",
-  Ride: "bicycle",
-  Strength: "barbell",
-  Yoga: "body",
-  Swim: "water",
-  Hike: "trail-sign",
-  Work: "briefcase",
-  Meeting: "people",
-  Meal: "restaurant",
-  Social: "happy",
+  Buyer: "cart",
+  Landlord: "business",
+  Renter: "key",
+  Seller: "pricetag",
+  Social: "people",
+  "Sphere of influence": "share-social",
   Travel: "airplane",
-  Rest: "bed",
-  Other: "ellipse",
 };
 
 export function activityIconName(activity: ActivityType): keyof typeof Ionicons.glyphMap {

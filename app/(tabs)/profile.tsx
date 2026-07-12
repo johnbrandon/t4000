@@ -5,7 +5,6 @@ import ActivityIcon from "../../components/ActivityIcon";
 import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
 import { useCheckIns, useSettings } from "../../lib/hooks";
-import { computeStats } from "../../lib/stats";
 import { activityColor, theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import type { ActivityType } from "../../lib/types";
@@ -25,8 +24,6 @@ export default function ProfileScreen() {
     return { totalMinutes, top };
   }, [checkIns]);
 
-  const streak = useMemo(() => computeStats(checkIns).currentStreakDays, [checkIns]);
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -35,7 +32,6 @@ export default function ProfileScreen() {
         <View style={styles.statsRow}>
           <StatCard label="Check-ins" value={String(checkIns.length)} accent={theme.color.accent} />
           <StatCard label="Total time" value={formatDuration(totals.totalMinutes)} accent={theme.color.accentBlue} />
-          <StatCard label="Streak" value={`${streak}d`} accent={theme.color.accentAlt} />
         </View>
 
         <Section title="Temperature unit">

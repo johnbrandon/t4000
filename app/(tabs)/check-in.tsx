@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
-import { insertCheckIn } from "../../lib/db";
+import { getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
 import { activityColor, theme } from "../../lib/theme";
 import { ACTIVITY_TYPES, type ActivityType } from "../../lib/types";
@@ -53,8 +53,11 @@ type LocationState =
 
 export default function CheckInScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const editId = typeof params.id === "string" ? params.id : null;
+  const editing = editId !== null;
 
-  const [activityType, setActivityType] = useState<ActivityType>("Run");
+  const [activityType, setActivityType] = useState<ActivityType>("Buyer");
   const [purpose, setPurpose] = useState("");
   const [participantInput, setParticipantInput] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
@@ -68,6 +71,9 @@ export default function CheckInScreen() {
   const [pastTime, setPastTime] = useState(nowTimeString(initial.current));
   const [latInput, setLatInput] = useState("");
   const [lonInput, setLonInput] = useState("");
+  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const existingWeather = useRef<WeatherSnapshot | null>(null);
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
 
@@ -92,9 +98,71 @@ export default function CheckInScreen() {
     }
   };
 
+  // In "now" mode we auto-acquire the device location. When editing, we load
+  // the check-in into the (past-style) form instead.
   useEffect(() => {
+    if (editing) return;
     loadLocation();
-  }, []);
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editId) return;
+    getCheckIn(editId).then((c) => {
+      if (!c) return;
+      setActivityType(c.activityType);
+      setPurpose(c.purpose);
+      setParticipants(c.participants);
+      setDurationMinutes(String(c.durationMinutes));
+      const when = new Date(c.createdAt);
+      setPastDate(nowDateString(when));
+      setPastTime(nowTimeString(when));
+      setLatInput(c.latitude != null ? String(c.latitude) : "");
+      setLonInput(c.longitude != null ? String(c.longitude) : "");
+      setResolvedAddress(c.placeLabel);
+      existingWeather.current = c.weatherCode != null && c.temperatureC != null
+        ? {
+            temperatureC: c.temperatureC,
+            dewpointC: c.dewpointC ?? c.temperatureC,
+            weatherCode: c.weatherCode,
+            weatherCondition: c.weatherCondition ?? "",
+          }
+        : null;
+      setMode("past");
+    });
+  }, [editId]);
+
+  // Look up the street address whenever valid coordinates are entered in
+  // past/edit mode, so the check-in shows where it happened.
+  useEffect(() => {
+    if (mode !== "past") return;
+    const lat = Number(latInput);
+    const lon = Number(lonInput);
+    if (
+      latInput.trim() === "" ||
+      lonInput.trim() === "" ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      Math.abs(lat) > 90 ||
+      Math.abs(lon) > 180
+    ) {
+      return;
+    }
+    let cancelled = false;
+    setAddressLoading(true);
+    const handle = setTimeout(() => {
+      reverseGeocode({ latitude: lat, longitude: lon })
+        .then((addr) => {
+          if (!cancelled) setResolvedAddress(addr);
+        })
+        .finally(() => {
+          if (!cancelled) setAddressLoading(false);
+        });
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [latInput, lonInput, mode]);
 
   useEffect(() => {
     if (timerRunning) {
@@ -221,29 +289,36 @@ export default function CheckInScreen() {
     if (anyCoord && validCoords) {
       latitude = lat;
       longitude = lon;
-      // Look up the historical weather for that date/time & place.
-      [placeLabel, weather] = await Promise.all([
-        reverseGeocode({ latitude, longitude }),
+      // Resolve the address (reuse the already-resolved one when present) and
+      // look up the historical weather for that date/time & place.
+      const [addr, fetched] = await Promise.all([
+        resolvedAddress ? Promise.resolve(resolvedAddress) : reverseGeocode({ latitude, longitude }),
         fetchWeatherAt(latitude, longitude, when).catch(() => null),
       ]);
+      placeLabel = addr ?? resolvedAddress ?? null;
+      // Keep the existing weather (when editing) if the lookup came back empty.
+      weather = fetched ?? (editing ? existingWeather.current : null);
     }
 
-    await insertCheckIn(
-      {
-        latitude,
-        longitude,
-        placeLabel,
-        temperatureC: weather?.temperatureC ?? null,
-        dewpointC: weather?.dewpointC ?? null,
-        weatherCondition: weather?.weatherCondition ?? null,
-        weatherCode: weather?.weatherCode ?? null,
-        durationMinutes: minutes,
-        activityType,
-        purpose: purpose.trim(),
-        participants,
-      },
-      when.toISOString()
-    );
+    const fields = {
+      latitude,
+      longitude,
+      placeLabel,
+      temperatureC: weather?.temperatureC ?? null,
+      dewpointC: weather?.dewpointC ?? null,
+      weatherCondition: weather?.weatherCondition ?? null,
+      weatherCode: weather?.weatherCode ?? null,
+      durationMinutes: minutes,
+      activityType,
+      purpose: purpose.trim(),
+      participants,
+    };
+
+    if (editing && editId) {
+      await updateCheckIn(editId, fields, when.toISOString());
+    } else {
+      await insertCheckIn(fields, when.toISOString());
+    }
     resetForm();
     router.push("/");
   }
@@ -252,12 +327,14 @@ export default function CheckInScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>New check-in</Text>
+          <Text style={styles.title}>{editing ? "Edit check-in" : "New check-in"}</Text>
 
-          <View style={styles.modeRow}>
-            <ModeButton label="Now" active={mode === "now"} onPress={() => setMode("now")} />
-            <ModeButton label="In the past" active={mode === "past"} onPress={() => setMode("past")} />
-          </View>
+          {!editing ? (
+            <View style={styles.modeRow}>
+              <ModeButton label="Now" active={mode === "now"} onPress={() => setMode("now")} />
+              <ModeButton label="In the past" active={mode === "past"} onPress={() => setMode("past")} />
+            </View>
+          ) : null}
 
           {mode === "now" ? (
             <Section title="Location & conditions">
@@ -308,6 +385,17 @@ export default function CheckInScreen() {
                 <Pressable onPress={fillCurrentCoords} style={styles.retryButton}>
                   <Text style={styles.retryLabel}>Use my current location</Text>
                 </Pressable>
+                {addressLoading ? (
+                  <View style={styles.addressRow}>
+                    <ActivityIndicator size="small" color={theme.color.textMuted} />
+                    <Text style={styles.locationHint}>Looking up address…</Text>
+                  </View>
+                ) : resolvedAddress ? (
+                  <View style={styles.addressRow}>
+                    <Ionicons name="location" size={14} color={theme.color.accent} />
+                    <Text style={styles.addressText}>{resolvedAddress}</Text>
+                  </View>
+                ) : null}
                 <Text style={styles.locationHint}>
                   Temperature, weather & dewpoint are looked up for this date & place when you save.
                 </Text>
@@ -402,7 +490,7 @@ export default function CheckInScreen() {
             {submitting ? (
               <ActivityIndicator color={theme.color.background} />
             ) : (
-              <Text style={styles.submitLabel}>Save check-in</Text>
+              <Text style={styles.submitLabel}>{editing ? "Save changes" : "Save check-in"}</Text>
             )}
           </Pressable>
         </ScrollView>
@@ -616,6 +704,17 @@ const styles = StyleSheet.create({
     color: theme.color.textMuted,
     fontSize: theme.font.caption,
     fontStyle: "italic",
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: theme.spacing(1),
+  },
+  addressText: {
+    color: theme.color.textPrimary,
+    fontSize: theme.font.body,
+    flexShrink: 1,
   },
   locationButton: {
     flexDirection: "row",

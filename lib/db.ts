@@ -162,6 +162,32 @@ export async function insertCheckIn(input: NewCheckIn, createdAt?: string): Prom
   return checkIn;
 }
 
+export async function updateCheckIn(id: string, input: NewCheckIn, createdAt: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE check_ins SET
+       created_at = ?, latitude = ?, longitude = ?, place_label = ?, temperature_c = ?, dewpoint_c = ?,
+       weather_condition = ?, weather_code = ?, duration_minutes = ?, activity_type = ?, purpose = ?, participants = ?
+     WHERE id = ?`,
+    [
+      createdAt,
+      input.latitude,
+      input.longitude,
+      input.placeLabel,
+      input.temperatureC,
+      input.dewpointC,
+      input.weatherCondition,
+      input.weatherCode,
+      input.durationMinutes,
+      input.activityType,
+      input.purpose,
+      JSON.stringify(input.participants ?? []),
+      id,
+    ]
+  );
+  notifyChanged();
+}
+
 export async function deleteCheckIn(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM check_ins WHERE id = ?`, [id]);
