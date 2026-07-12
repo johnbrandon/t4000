@@ -1,5 +1,10 @@
-const CACHE_NAME = "checkin-shell-v1";
-const SHELL_ASSETS = ["/", "/manifest.json"];
+const CACHE_NAME = "checkin-shell-v2";
+
+// Resolve everything against the service worker's own location so the same
+// file works at a domain root ("/") or under a sub-path ("/t4000/") on
+// GitHub Pages, without hardcoding the base.
+const BASE = new URL("./", self.location.href).href;
+const SHELL_ASSETS = [BASE, BASE + "manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -18,7 +23,7 @@ self.addEventListener("activate", (event) => {
 });
 
 // Network-first for navigations/data so check-ins never show stale, falling
-// back to the cached shell when offline.
+// back to the cached app shell when offline.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
@@ -29,6 +34,8 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
+      .catch(() =>
+        caches.match(event.request).then((cached) => cached || caches.match(BASE))
+      )
   );
 });

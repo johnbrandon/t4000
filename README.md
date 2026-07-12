@@ -37,6 +37,19 @@ _Four Thousand Weeks_.
 No API keys are required: weather comes from Open-Meteo and reverse geocoding
 from BigDataCloud's free client endpoints.
 
+## Hosted PWA
+
+Every push to the default branch builds the web export and publishes it to
+GitHub Pages via `.github/workflows/deploy-pages.yml`:
+
+> **https://johnbrandon.github.io/t4000/**
+
+Open that on a phone and use *Add to Home Screen* (Safari) / *Install app*
+(Chrome) to run it fullscreen, offline-capable, with no local server. Because
+project sites are served from a `/t4000/` sub-path, the build sets
+`EXPO_BASE_URL` (via `app.config.js`, layered over `app.json`) so router and
+PWA asset URLs resolve correctly; local runs stay anchored at `/`.
+
 ## Running
 
 ```bash
@@ -53,6 +66,12 @@ npm run build:web
 
 # Type-check
 npm run typecheck
+```
+
+To reproduce the hosted build locally (served under `/t4000/`):
+
+```bash
+EXPO_BASE_URL=/t4000 EXPO_PUBLIC_BASE_URL=/t4000 npx expo export -p web
 ```
 
 ## Project layout
