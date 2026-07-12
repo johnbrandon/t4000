@@ -29,17 +29,17 @@ export default function ProfileScreen() {
     return { totalMinutes, top };
   }, [checkIns]);
 
-  // People tagged in check-ins, by how many check-ins they appear in (desc).
+  // People tagged in check-ins, by total time spent with them (desc).
   const people = useMemo(() => {
-    const countByPerson = new Map<string, number>();
+    const minutesByPerson = new Map<string, number>();
     for (const c of checkIns) {
       for (const p of c.participants) {
         const name = p.trim();
         if (!name) continue;
-        countByPerson.set(name, (countByPerson.get(name) ?? 0) + 1);
+        minutesByPerson.set(name, (minutesByPerson.get(name) ?? 0) + c.durationMinutes);
       }
     }
-    return [...countByPerson.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    return [...minutesByPerson.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [checkIns]);
 
   return (
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
 
         {people.length > 0 ? (
           <Section title="Who you spend your time with">
-            {people.map(([name, count], i) => {
+            {people.map(([name, minutes], i) => {
               const color = PERSON_COLORS[i % PERSON_COLORS.length];
               return (
                 <View key={name} style={styles.breakdownRow}>
@@ -92,19 +92,17 @@ export default function ProfileScreen() {
                     <MaterialCommunityIcons name="account" size={12} color={color} />
                   </View>
                   <Text style={styles.breakdownLabel} numberOfLines={1}>
-                    {name}
+                    {abbreviateName(name)}
                   </Text>
                   <View style={styles.breakdownBarTrack}>
                     <View
                       style={[
                         styles.breakdownBarFill,
-                        { width: `${Math.max(4, (count / people[0][1]) * 100)}%`, backgroundColor: color },
+                        { width: `${Math.max(4, (minutes / (people[0][1] || 1)) * 100)}%`, backgroundColor: color },
                       ]}
                     />
                   </View>
-                  <Text style={styles.breakdownValue}>
-                    {count}×
-                  </Text>
+                  <Text style={styles.breakdownValue}>{formatDuration(minutes)}</Text>
                 </View>
               );
             })}
@@ -113,6 +111,15 @@ export default function ProfileScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+// Abbreviate a full name to first initial + last name ("Bill Couch" -> "B Couch").
+// Single-word names are left unchanged.
+function abbreviateName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2) return name;
+  const last = parts[parts.length - 1];
+  return `${parts[0][0].toUpperCase()} ${last}`;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

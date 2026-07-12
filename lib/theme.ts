@@ -48,6 +48,14 @@ export function activityColor(activity: string): string {
   return activityColors[activity] ?? theme.color.accent;
 }
 
+// GitHub-contributions green scale (light mode): 0 interactions -> 4+.
+export const CONTRIBUTION_LEVELS = ["#EBEDF0", "#9BE9A8", "#40C463", "#30A14E", "#216E39"];
+
+export function contributionColor(count: number): string {
+  const level = count <= 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count === 3 ? 3 : 4;
+  return CONTRIBUTION_LEVELS[level];
+}
+
 // Temperature gradient: cold (blue) -> hot (red). Uses HSL hue 240 (blue) down
 // to 0 (red) through green. The domain is usually derived from the actual data
 // (see YearScreen) so the full gradient is used and contrast stays strong; these

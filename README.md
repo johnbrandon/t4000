@@ -3,8 +3,8 @@
 A React Native + Expo progressive web app for time-tracking via location
 check-ins, inspired by **Foursquare** (place check-ins), **Strava** (activity
 feed) and **Whoop** (personal metrics). Each check-in is stored locally and
-rolls up into a year-at-a-glance calendar — one square per day, colored by
-that day's main activity.
+rolls up into a year-at-a-glance calendar — one square per day, shaded like a
+GitHub contribution graph by how many interactions you logged that day.
 
 ## What a check-in captures
 
@@ -28,14 +28,14 @@ that day's main activity.
   Meeting, Other, Renter, Seller, Social, Sphere, Subway) and rate the
   **interaction quality** on a 1…5 scale. Length of activity is optional.
 - **This Year** — a 12-month × 31-day calendar (months across, days down) where
-  each square is shaded by that day's temperature, blue (0°F) → red (100°F).
-  Check-in days use the recorded temperature; other past days are backfilled from
-  historical daily means at a default location. Below it, a stack of tiles:
+  each square is shaded like a GitHub contribution graph: the more interactions
+  you logged that day, the darker the shade of green. Below it, a stack of tiles:
   interaction quality (diverging around a neutral 0 line), average temperature,
   rainfall, the daily 10-year Treasury yield (FRED), and Buyer/Seller appointment
   counts — each its own chart. Tap a day to inspect its check-ins.
 - **Profile** — temperature unit, plus "where your time goes" (by activity) and
-  "who you spend your time with" (people tagged in check-ins, most-seen first).
+  "who you spend your time with" (people tagged in check-ins, ranked by total
+  time spent together, names shown as first initial + last name).
 - **Map** — an interactive map (Leaflet + OpenStreetMap on web) with a pin for
   every check-in that recorded coordinates, colored by activity.
 
@@ -102,7 +102,7 @@ app/                     expo-router routes
     map.tsx              Map of located check-ins
     profile.tsx          Profile & settings
 components/              presentational UI (cards, chips, grid, icons)
-  YearGrid.tsx          12×31 month/day temperature grid
+  YearGrid.tsx          12×31 month/day contribution-style grid
   MapView.web.tsx       Leaflet map (web); MapView.tsx is the native fallback
 lib/                     data + domain logic
   db.ts                 SQLite schema, migrations, CRUD, change subscription

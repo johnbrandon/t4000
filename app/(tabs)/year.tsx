@@ -116,8 +116,8 @@ export default function YearScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>This Year</Text>
         <Text style={styles.subtitle}>
-          Every square is a day of {year} (months across, days down), shaded by that day's average
-          temperature — blue (0°F) to red (100°F). Days without a check-in are backfilled from history.
+          Every square is a day of {year} (months across, days down). The more interactions you log
+          that day, the darker the shade of green — in the style of GitHub contributions.
         </Text>
 
         {years.length > 1 ? (
@@ -140,10 +140,8 @@ export default function YearScreen() {
           <YearGrid
             year={year}
             dayData={dayData}
-            backfillTemps={backfillTemps}
             selectedDate={selectedDate}
             onSelectDay={setSelectedDate}
-            temperatureUnit={settings.temperatureUnit}
           />
         </View>
 

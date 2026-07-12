@@ -1,8 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import { dateKey, daysInMonth, localDayKey, MONTH_INITIALS, type DaySummary } from "../lib/dayGrid";
-import { TEMP_MAX_C, TEMP_MIN_C, tempToColor, theme } from "../lib/theme";
-import { formatTemperature } from "../lib/weather";
+import { CONTRIBUTION_LEVELS, contributionColor, theme } from "../lib/theme";
 
 const GAP = 3;
 const DAY_LABEL_W = 22;
@@ -14,17 +13,13 @@ const MAX_DAYS = 31;
 const YearGrid = memo(function YearGrid({
   year,
   dayData,
-  backfillTemps,
   onSelectDay,
   selectedDate,
-  temperatureUnit,
 }: {
   year: number;
   dayData: Map<string, DaySummary>;
-  backfillTemps?: Map<string, number>;
   onSelectDay?: (date: string) => void;
   selectedDate?: string | null;
-  temperatureUnit: "C" | "F";
 }) {
   const now = useMemo(() => new Date(), []);
   const todayKey = localDayKey(now);
@@ -76,15 +71,11 @@ const YearGrid = memo(function YearGrid({
                   const isSelected = key === selectedDate;
                   const isFuture = key > todayKey;
 
-                  // Prefer the day's recorded check-in temperature; otherwise
-                  // backfill non-check-in days with the historical daily mean.
-                  const backfill = backfillTemps?.get(key);
-                  let backgroundColor: string;
-                  if (summary?.avgTempC != null) backgroundColor = tempToColor(summary.avgTempC);
-                  else if (summary) backgroundColor = theme.color.textMuted; // checked in, no temp
-                  else if (!isFuture && backfill != null) backgroundColor = tempToColor(backfill);
-                  else if (isFuture) backgroundColor = "transparent";
-                  else backgroundColor = theme.color.surfaceRaised;
+                  // GitHub-contributions style: color by number of interactions
+                  // logged that day — more interactions, darker green.
+                  const backgroundColor = isFuture
+                    ? "transparent"
+                    : contributionColor(summary?.count ?? 0);
 
                   const cellStyle = [
                     dims,
@@ -94,10 +85,10 @@ const YearGrid = memo(function YearGrid({
                         ? theme.color.textPrimary
                         : isToday
                         ? theme.color.accent
-                        : isFuture && !summary
+                        : isFuture
                         ? theme.color.border
                         : "transparent",
-                      borderWidth: isSelected || isToday ? 1.5 : isFuture && !summary ? 1 : 0,
+                      borderWidth: isSelected || isToday ? 1.5 : isFuture ? 1 : 0,
                     },
                   ];
 
@@ -108,27 +99,23 @@ const YearGrid = memo(function YearGrid({
             );
           })}
 
-          <Legend temperatureUnit={temperatureUnit} />
+          <Legend />
         </View>
       ) : null}
     </View>
   );
 });
 
-function Legend({ temperatureUnit }: { temperatureUnit: "C" | "F" }) {
-  const steps = 10;
+function Legend() {
   return (
     <View style={styles.legend}>
-      <Text style={styles.legendLabel}>{formatTemperature(TEMP_MIN_C, temperatureUnit)}</Text>
+      <Text style={styles.legendLabel}>Less</Text>
       <View style={styles.legendBar}>
-        {Array.from({ length: steps }, (_, i) => {
-          const c = TEMP_MIN_C + ((TEMP_MAX_C - TEMP_MIN_C) * i) / (steps - 1);
-          return <View key={i} style={[styles.legendSwatch, { backgroundColor: tempToColor(c) }]} />;
-        })}
+        {CONTRIBUTION_LEVELS.map((color, i) => (
+          <View key={i} style={[styles.legendSwatch, { backgroundColor: color }]} />
+        ))}
       </View>
-      <Text style={styles.legendLabel}>{formatTemperature(TEMP_MAX_C, temperatureUnit)}</Text>
-      <View style={[styles.legendGray, { backgroundColor: theme.color.textMuted }]} />
-      <Text style={styles.legendLabel}>no temp</Text>
+      <Text style={styles.legendLabel}>More</Text>
     </View>
   );
 }
@@ -151,21 +138,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: theme.spacing(4),
-    flexWrap: "wrap",
     gap: 4,
   },
   legendBar: {
     flexDirection: "row",
+    gap: 3,
   },
   legendSwatch: {
-    width: 10,
-    height: 11,
-  },
-  legendGray: {
     width: 11,
     height: 11,
     borderRadius: 2,
-    marginLeft: theme.spacing(2),
   },
   legendLabel: {
     color: theme.color.textMuted,
