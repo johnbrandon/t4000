@@ -36,7 +36,9 @@ export function summarizeByDay(checkIns: CheckIn[], year: number): Map<string, D
     let tempSum = 0;
     let tempCount = 0;
     for (const entry of entries) {
-      counts.set(entry.activityType, (counts.get(entry.activityType) ?? 0) + 1);
+      for (const activity of entry.activityTypes) {
+        counts.set(activity, (counts.get(activity) ?? 0) + 1);
+      }
       totalMinutes += entry.durationMinutes;
       if (typeof entry.temperatureC === "number") {
         tempSum += entry.temperatureC;

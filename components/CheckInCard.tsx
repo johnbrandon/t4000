@@ -21,9 +21,9 @@ export default function CheckInCard({
       onPress={onPress}
     >
       <View style={styles.row}>
-        <ActivityIcon activity={checkIn.activityType} />
+        <ActivityIcon activity={checkIn.activityTypes[0]} />
         <View style={styles.headerText}>
-          <Text style={styles.title}>{checkIn.activityType}</Text>
+          <Text style={styles.title}>{checkIn.activityTypes.join(" · ")}</Text>
           <Text style={styles.subtitle}>
             {checkIn.placeLabel ??
               (checkIn.latitude !== null && checkIn.longitude !== null

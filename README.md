@@ -18,20 +18,21 @@ that day's main activity.
 
 ## Screens
 
-- **Feed** — reverse-chronological, infinitely-scrolling activity feed with
-  week stats. Tap any check-in to edit and re-save it.
+- **Feed** — infinitely-scrolling activity feed with week stats, **sortable** by
+  newest/oldest/longest/shortest. Tap any check-in to edit or delete it.
 - **Check In** — capture a check-in **now** (auto-fetches location + weather), or
   **in the past** by entering a date, time, and coordinates — the street address
   is resolved live and historical temperature/weather/dewpoint are looked up from
   Open-Meteo's archive. Location is best-effort: a check-in still saves without it.
-  Activity types: Biz dev, Buyer, Landlord, Renter, Seller, Social, Sphere,
-  Travel. Tap a feed card to edit or delete a check-in.
+  **Choose one or more** activity tags: Biz dev, Buyer, Call, Email, Landlord,
+  Other, Renter, Seller, Showing, Social, Sphere, Text, Travel.
 - **This Year** — a 12-month × 31-day calendar (months across, days down) where
   each square is shaded by that day's temperature, blue (0°C) → red (35°C).
   Check-in days use the recorded temperature; other past days are backfilled
-  from historical daily means. Below it, two panels plot the daily 10-year
-  Treasury yield (FRED, carried forward across every day) and Buyer/Seller
-  appointment counts. Tap a day to inspect its check-ins.
+  from historical daily means at a default location. Below it, two separate
+  charts plot the daily 10-year Treasury yield (FRED, carried forward across
+  every day) and Buyer/Seller appointment counts. Tap a day to inspect its
+  check-ins.
 - **Profile** — temperature unit, plus "where your time goes" (by activity) and
   "who you spend your time with" (people tagged in check-ins, most-seen first).
 - **Map** — an interactive map (Leaflet + OpenStreetMap on web) with a pin for

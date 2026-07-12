@@ -20,8 +20,8 @@ export function checkInsToPoints(checkIns: CheckIn[]): MapPoint[] {
       id: c.id,
       latitude: c.latitude,
       longitude: c.longitude,
-      color: activityColor(c.activityType),
-      title: c.activityType,
+      color: activityColor(c.activityTypes[0]),
+      title: c.activityTypes.join(", "),
       subtitle: `${place} · ${formatRelativeTime(c.createdAt)}`,
     });
   }

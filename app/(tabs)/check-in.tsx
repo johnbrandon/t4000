@@ -57,7 +57,13 @@ export default function CheckInScreen() {
   const editId = typeof params.id === "string" ? params.id : null;
   const editing = editId !== null;
 
-  const [activityType, setActivityType] = useState<ActivityType>("Buyer");
+  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
+
+  function toggleActivity(activity: ActivityType) {
+    setActivityTypes((prev) =>
+      prev.includes(activity) ? prev.filter((a) => a !== activity) : [...prev, activity]
+    );
+  }
   const [purpose, setPurpose] = useState("");
   const [participantInput, setParticipantInput] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
@@ -110,7 +116,7 @@ export default function CheckInScreen() {
     if (!editId) return;
     getCheckIn(editId).then((c) => {
       if (!c) return;
-      setActivityType(c.activityType);
+      setActivityTypes(c.activityTypes);
       setPurpose(c.purpose);
       setParticipants(c.participants);
       setDurationMinutes(String(c.durationMinutes));
@@ -243,6 +249,10 @@ export default function CheckInScreen() {
       setFormError("Add how long the activity lasted (in minutes) before saving.");
       return;
     }
+    if (activityTypes.length === 0) {
+      setFormError("Pick at least one activity.");
+      return;
+    }
     setFormError(null);
     setSubmitting(true);
     try {
@@ -271,7 +281,7 @@ export default function CheckInScreen() {
       weatherCondition: ready?.weather?.weatherCondition ?? null,
       weatherCode: ready?.weather?.weatherCode ?? null,
       durationMinutes: minutes,
-      activityType,
+      activityTypes,
       purpose: purpose.trim(),
       participants,
     });
@@ -328,7 +338,7 @@ export default function CheckInScreen() {
       weatherCondition: weather?.weatherCondition ?? null,
       weatherCode: weather?.weatherCode ?? null,
       durationMinutes: minutes,
-      activityType,
+      activityTypes,
       purpose: purpose.trim(),
       participants,
     };
@@ -422,15 +432,15 @@ export default function CheckInScreen() {
             </>
           )}
 
-          <Section title="Activity">
+          <Section title="Activity (choose one or more)">
             <View style={styles.chipWrap}>
               {ACTIVITY_TYPES.map((activity) => (
                 <Chip
                   key={activity}
                   label={activity}
                   color={activityColor(activity)}
-                  selected={activityType === activity}
-                  onPress={() => setActivityType(activity)}
+                  selected={activityTypes.includes(activity)}
+                  onPress={() => toggleActivity(activity)}
                 />
               ))}
             </View>

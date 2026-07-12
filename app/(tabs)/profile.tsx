@@ -21,7 +21,9 @@ export default function ProfileScreen() {
     let totalMinutes = 0;
     for (const c of checkIns) {
       totalMinutes += c.durationMinutes;
-      minutesByActivity.set(c.activityType, (minutesByActivity.get(c.activityType) ?? 0) + c.durationMinutes);
+      for (const activity of c.activityTypes) {
+        minutesByActivity.set(activity, (minutesByActivity.get(activity) ?? 0) + c.durationMinutes);
+      }
     }
     const top = [...minutesByActivity.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
     return { totalMinutes, top };

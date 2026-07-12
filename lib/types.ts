@@ -1,11 +1,16 @@
 export const ACTIVITY_TYPES = [
   "Biz dev",
   "Buyer",
+  "Call",
+  "Email",
   "Landlord",
+  "Other",
   "Renter",
   "Seller",
+  "Showing",
   "Social",
   "Sphere",
+  "Text",
   "Travel",
 ] as const;
 
@@ -22,7 +27,7 @@ export interface CheckIn {
   weatherCondition: string | null;
   weatherCode: number | null;
   durationMinutes: number;
-  activityType: ActivityType;
+  activityTypes: ActivityType[];
   purpose: string;
   participants: string[];
 }

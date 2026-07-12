@@ -4,13 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CheckInCard from "../../components/CheckInCard";
+import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
 import { useCheckIns, useSettings } from "../../lib/hooks";
 import { computeStats } from "../../lib/stats";
 import { theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
+import type { CheckIn } from "../../lib/types";
 
 const PAGE_SIZE = 20;
+
+const SORTS = {
+  newest: { label: "Newest", compare: (a: CheckIn, b: CheckIn) => b.createdAt.localeCompare(a.createdAt) },
+  oldest: { label: "Oldest", compare: (a: CheckIn, b: CheckIn) => a.createdAt.localeCompare(b.createdAt) },
+  longest: { label: "Longest", compare: (a: CheckIn, b: CheckIn) => b.durationMinutes - a.durationMinutes },
+  shortest: { label: "Shortest", compare: (a: CheckIn, b: CheckIn) => a.durationMinutes - b.durationMinutes },
+} as const;
+type SortKey = keyof typeof SORTS;
 
 export default function FeedScreen() {
   const { checkIns, loading, refresh } = useCheckIns();
@@ -18,14 +28,17 @@ export default function FeedScreen() {
   const router = useRouter();
   const stats = useMemo(() => computeStats(checkIns), [checkIns]);
 
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const sorted = useMemo(() => [...checkIns].sort(SORTS[sortKey].compare), [checkIns, sortKey]);
+
   // Infinite scroll: reveal the feed in pages as the user reaches the end.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [checkIns.length === 0]);
+  }, [checkIns.length === 0, sortKey]);
 
-  const visible = useMemo(() => checkIns.slice(0, visibleCount), [checkIns, visibleCount]);
-  const hasMore = visibleCount < checkIns.length;
+  const visible = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount]);
+  const hasMore = visibleCount < sorted.length;
 
   function loadMore() {
     if (hasMore) setVisibleCount((c) => c + PAGE_SIZE);
@@ -52,6 +65,19 @@ export default function FeedScreen() {
               <StatCard label="This week" value={String(stats.weekCount)} accent={theme.color.accent} />
               <StatCard label="Week time" value={formatDuration(stats.weekMinutes)} accent={theme.color.accentBlue} />
             </View>
+            {checkIns.length > 1 ? (
+              <View style={styles.sortRow}>
+                <Text style={styles.sortLabel}>Sort</Text>
+                {(Object.keys(SORTS) as SortKey[]).map((key) => (
+                  <Chip
+                    key={key}
+                    label={SORTS[key].label}
+                    selected={sortKey === key}
+                    onPress={() => setSortKey(key)}
+                  />
+                ))}
+              </View>
+            ) : null}
           </View>
         }
         renderItem={({ item }) => (
@@ -109,7 +135,22 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     gap: theme.spacing(3),
-    marginBottom: theme.spacing(5),
+    marginBottom: theme.spacing(4),
+  },
+  sortRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    marginBottom: theme.spacing(3),
+  },
+  sortLabel: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.caption,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginRight: theme.spacing(2),
+    marginBottom: theme.spacing(2),
   },
   footer: {
     marginVertical: theme.spacing(4),

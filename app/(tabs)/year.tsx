@@ -3,14 +3,20 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
+import AppointmentsChart from "../../components/AppointmentsChart";
 import YearGrid from "../../components/YearGrid";
-import YieldChart, { type YieldStatus } from "../../components/YieldChart";
+import YieldLineChart, { type YieldStatus } from "../../components/YieldLineChart";
 import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
 import { useCheckIns, useSettings } from "../../lib/hooks";
 import { theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import { fetchTreasuryYields } from "../../lib/treasury";
 import { fetchDailyMeanTemps } from "../../lib/weather";
+
+// Default reference location for backfilling temperature on days without a
+// check-in (New York, NY).
+const BACKFILL_LAT = 40.75581;
+const BACKFILL_LON = -73.97182;
 
 export default function YearScreen() {
   const { checkIns } = useCheckIns();
@@ -40,28 +46,15 @@ export default function YearScreen() {
     };
   }, [year]);
 
-  // Reference location for backfilling temperatures: the most recent check-in
-  // that recorded coordinates (checkIns are newest-first).
-  const refCoords = useMemo(() => {
-    for (const c of checkIns) {
-      if (c.latitude != null && c.longitude != null) return { lat: c.latitude, lon: c.longitude };
-    }
-    return null;
-  }, [checkIns]);
-
   useEffect(() => {
-    if (!refCoords) {
-      setBackfillTemps(new Map());
-      return;
-    }
     let cancelled = false;
-    fetchDailyMeanTemps(refCoords.lat, refCoords.lon, year).then((map) => {
+    fetchDailyMeanTemps(BACKFILL_LAT, BACKFILL_LON, year).then((map) => {
       if (!cancelled) setBackfillTemps(map);
     });
     return () => {
       cancelled = true;
     };
-  }, [refCoords?.lat, refCoords?.lon, year]);
+  }, [year]);
 
   const years = useMemo(() => {
     const set = new Set<number>([currentYear]);
@@ -71,11 +64,11 @@ export default function YearScreen() {
 
   const dayData = useMemo(() => summarizeByDay(checkIns, year), [checkIns, year]);
 
-  // Count buyer/seller check-ins per day for the appointment-vs-yield chart.
+  // Count buyer/seller check-ins per day for the appointments chart.
   const appointmentsByDay = useMemo(() => {
     const map = new Map<string, number>();
     for (const c of checkIns) {
-      if (c.activityType !== "Buyer" && c.activityType !== "Seller") continue;
+      if (!c.activityTypes.includes("Buyer") && !c.activityTypes.includes("Seller")) continue;
       const date = new Date(c.createdAt);
       if (date.getFullYear() !== year) continue;
       const key = localDayKey(date);
@@ -132,12 +125,8 @@ export default function YearScreen() {
           />
         </View>
 
-        <YieldChart
-          year={year}
-          appointmentsByDay={appointmentsByDay}
-          yields={yields}
-          status={yieldStatus}
-        />
+        <YieldLineChart year={year} yields={yields} status={yieldStatus} />
+        <AppointmentsChart year={year} appointmentsByDay={appointmentsByDay} />
 
         {selectedSummary ? (
           <View style={styles.detailCard}>
@@ -153,7 +142,7 @@ export default function YearScreen() {
             </Text>
             {selectedSummary.checkIns.map((c) => (
               <Text key={c.id} style={styles.detailLine}>
-                • {c.activityType}
+                • {c.activityTypes.join(", ")}
                 {c.purpose ? ` — ${c.purpose}` : ""}
               </Text>
             ))}

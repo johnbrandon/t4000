@@ -32,12 +32,17 @@ export const theme = {
 export const activityColors: Record<string, string> = {
   "Biz dev": "#8B95FF",
   Buyer: "#3DDC97",
+  Call: "#FF9F45",
+  Email: "#34C3FF",
   Landlord: "#4C8DFF",
+  Other: "#8A8A96",
   Renter: "#C792EA",
   Seller: "#FF6154",
+  Showing: "#F5B942",
   Social: "#FF8DC7",
   Sphere: "#4CD3E0",
-  Travel: "#F5B942",
+  Text: "#A0E060",
+  Travel: "#E0C34C",
 };
 
 export function activityColor(activity: string): string {
@@ -48,8 +53,8 @@ export function activityColor(activity: string): string {
 // to 0 (red) through green. The domain is usually derived from the actual data
 // (see YearScreen) so the full gradient is used and contrast stays strong; these
 // constants are only the fallback when there isn't enough data.
-export const TEMP_MIN_C = 0;
-export const TEMP_MAX_C = 35;
+export const TEMP_MIN_C = ((20 - 32) * 5) / 9; // 20°F ≈ -6.7°C
+export const TEMP_MAX_C = ((95 - 32) * 5) / 9; // 95°F = 35°C
 
 export function tempToColor(celsius: number, minC = TEMP_MIN_C, maxC = TEMP_MAX_C): string {
   const span = maxC - minC || 1;

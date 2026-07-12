@@ -6,11 +6,16 @@ import type { ActivityType } from "../lib/types";
 const ICONS: Record<ActivityType, keyof typeof Ionicons.glyphMap> = {
   "Biz dev": "laptop",
   Buyer: "cart",
+  Call: "call",
+  Email: "mail",
   Landlord: "business",
+  Other: "ellipsis-horizontal",
   Renter: "key",
   Seller: "pricetag",
+  Showing: "home",
   Social: "people",
   Sphere: "share-social",
+  Text: "chatbubble-ellipses",
   Travel: "airplane",
 };
 
