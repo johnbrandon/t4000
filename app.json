@@ -6,7 +6,7 @@
     "scheme": "checkin",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -32,8 +32,8 @@
       "output": "single",
       "name": "Check In",
       "shortName": "Check In",
-      "themeColor": "#0B0B0F",
-      "backgroundColor": "#0B0B0F",
+      "themeColor": "#F4F5F7",
+      "backgroundColor": "#F4F5F7",
       "display": "standalone"
     },
     "plugins": [

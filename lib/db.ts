@@ -105,6 +105,26 @@ async function migrate(db: SQLite.SQLiteDatabase) {
       r.id,
     ]);
   }
+
+  // Migrate quality from the old -2..+2 scale to 1..5 (shift +3). Detected by
+  // any value below the new minimum of 1 (the old scale had 0 and negatives).
+  const q = await db.getFirstAsync<{ minq: number | null }>("SELECT MIN(quality) AS minq FROM check_ins");
+  if (q && q.minq != null && q.minq < 1) {
+    await db.execAsync("UPDATE check_ins SET quality = MIN(5, MAX(1, quality + 3))");
+  }
+
+  // Rename activities in stored data to match the current list.
+  const renames: [string, string][] = [
+    ["Showing", "Meeting"],
+    ["Travel", "Subway"],
+  ];
+  for (const [oldName, newName] of renames) {
+    const hit = await db.getFirstAsync("SELECT 1 FROM check_ins WHERE activity_types LIKE ? LIMIT 1", [`%"${oldName}"%`]);
+    if (hit) {
+      await db.runAsync("UPDATE check_ins SET activity_types = REPLACE(activity_types, ?, ?)", [`"${oldName}"`, `"${newName}"`]);
+      await db.runAsync("UPDATE check_ins SET activity_type = ? WHERE activity_type = ?", [newName, oldName]);
+    }
+  }
 }
 
 // --- change notifications so screens can refresh after a write ---

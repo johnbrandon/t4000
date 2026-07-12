@@ -3,12 +3,13 @@ import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-nativ
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 import { dateKey, daysInMonth, MONTH_INITIALS } from "../lib/dayGrid";
 import { theme } from "../lib/theme";
+import { QUALITY_MAX, QUALITY_MIN, QUALITY_NEUTRAL } from "../lib/types";
 
 const CHART_FONT = Platform.OS === "web" ? "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" : undefined;
 const H = 130;
 const PAD_X = 8;
 const PAD_Y = 16;
-const MAX_ABS = 2; // quality spans -2..+2
+const MAX_ABS = QUALITY_MAX - QUALITY_NEUTRAL; // distance from neutral to an extreme (2)
 
 // Diverging bar chart: average interaction quality per day, drawn above (green)
 // and below (red) a neutral zero line.
@@ -58,17 +59,17 @@ export default function QualityChart({
   return (
     <View style={styles.card}>
       <Text style={styles.title}>Interaction Quality</Text>
-      <Text style={styles.subtitle}>Average quality of that day's interactions, −2 to +2.</Text>
+      <Text style={styles.subtitle}>Average quality of that day's interactions, 1 to 5 (3 = neutral).</Text>
 
       <View onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)} style={{ height: H }}>
         {width > 0 ? (
           <Svg width={width} height={H}>
             {days
-              .filter((d) => d.value != null && d.value !== 0)
+              .filter((d) => d.value != null && d.value !== QUALITY_NEUTRAL)
               .map((d) => {
-                const v = d.value as number;
-                const barH = (Math.abs(v) / MAX_ABS) * halfH;
-                const y = v > 0 ? zeroY - barH : zeroY;
+                const diff = (d.value as number) - QUALITY_NEUTRAL;
+                const barH = (Math.abs(diff) / MAX_ABS) * halfH;
+                const y = diff > 0 ? zeroY - barH : zeroY;
                 return (
                   <Rect
                     key={d.key}
@@ -76,18 +77,18 @@ export default function QualityChart({
                     y={y}
                     width={barW}
                     height={barH}
-                    fill={v > 0 ? theme.color.accent : theme.color.danger}
+                    fill={diff > 0 ? theme.color.accent : theme.color.danger}
                     rx={Math.min(1.5, barW / 2)}
                   />
                 );
               })}
-            {/* neutral zero line */}
+            {/* neutral line */}
             <Line x1={PAD_X} y1={zeroY} x2={width - PAD_X} y2={zeroY} stroke={theme.color.textMuted} strokeWidth={1} />
             <SvgText x={PAD_X} y={plotTop + 2} fill={theme.color.accent} fontSize={9} fontFamily={CHART_FONT}>
-              +2
+              {QUALITY_MAX}
             </SvgText>
             <SvgText x={PAD_X} y={plotBottom} fill={theme.color.danger} fontSize={9} fontFamily={CHART_FONT}>
-              −2
+              {QUALITY_MIN}
             </SvgText>
             {monthStarts.map((mo, i) => (
               <SvgText key={i} x={xFor(mo.index)} y={H - 2} fill={theme.color.textMuted} fontSize={9} fontFamily={CHART_FONT} textAnchor="middle">

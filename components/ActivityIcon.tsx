@@ -1,27 +1,26 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 import { activityColor, theme } from "../lib/theme";
 import type { ActivityType } from "../lib/types";
 
-const ICONS: Record<ActivityType, keyof typeof Ionicons.glyphMap> = {
+type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+const ICONS: Record<ActivityType, IconName> = {
   "Biz dev": "laptop",
   Buyer: "cart",
-  Call: "call",
-  Coffee: "cafe",
-  Email: "mail",
-  Landlord: "business",
-  Other: "ellipsis-horizontal",
-  Renter: "key",
-  Seller: "pricetag",
-  Showing: "home",
-  Social: "people",
-  Sphere: "share-social",
-  Text: "chatbubble-ellipses",
-  Travel: "airplane",
+  Coffee: "coffee",
+  Landlord: "office-building",
+  Meeting: "account-group",
+  Other: "dots-horizontal",
+  Renter: "key-variant",
+  Seller: "tag",
+  Social: "account-multiple",
+  Sphere: "share-variant",
+  Subway: "subway-variant",
 };
 
-export function activityIconName(activity: ActivityType): keyof typeof Ionicons.glyphMap {
-  return ICONS[activity] ?? "ellipse";
+export function activityIconName(activity: ActivityType): IconName {
+  return ICONS[activity] ?? "circle-medium";
 }
 
 export default function ActivityIcon({ activity, size = 22 }: { activity: ActivityType; size?: number }) {
@@ -38,7 +37,7 @@ export default function ActivityIcon({ activity, size = 22 }: { activity: Activi
         },
       ]}
     >
-      <Ionicons name={ICONS[activity] ?? "ellipse"} size={size} color={color} />
+      <MaterialCommunityIcons name={ICONS[activity] ?? "circle-medium"} size={size} color={color} />
     </View>
   );
 }

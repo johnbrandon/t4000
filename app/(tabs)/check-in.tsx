@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -17,7 +17,7 @@ import Chip from "../../components/Chip";
 import { deleteCheckIn, getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
 import { activityColor, theme } from "../../lib/theme";
-import { ACTIVITY_TYPES, QUALITY_LEVELS, type ActivityType } from "../../lib/types";
+import { ACTIVITY_TYPES, QUALITY_LEVELS, QUALITY_NEUTRAL, type ActivityType } from "../../lib/types";
 import { fetchWeather, fetchWeatherAt, formatTemperature, type WeatherSnapshot } from "../../lib/weather";
 
 type Mode = "now" | "past";
@@ -58,7 +58,7 @@ export default function CheckInScreen() {
   const editing = editId !== null;
 
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
-  const [quality, setQuality] = useState(0);
+  const [quality, setQuality] = useState(QUALITY_NEUTRAL);
 
   function toggleActivity(activity: ActivityType) {
     setActivityTypes((prev) =>
@@ -244,15 +244,13 @@ export default function CheckInScreen() {
   }
 
   async function handleSubmit() {
-    const minutes = Number(durationMinutes);
-    if (!minutes || minutes <= 0) {
+    // Duration is optional; treat a blank/invalid value as 0 minutes.
+    const parsed = Number(durationMinutes);
+    const minutes = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    if (activityTypes.length === 0) {
       // Alert has no implementation on react-native-web, so surface validation
       // inline instead — otherwise the tap looks like it does nothing.
-      setFormError("Add how long the activity lasted (in minutes) before saving.");
-      return;
-    }
-    if (activityTypes.length === 0) {
-      setFormError("Pick at least one activity.");
+      setFormError("Pick at least one interaction.");
       return;
     }
     setFormError(null);
@@ -425,7 +423,7 @@ export default function CheckInScreen() {
                   </View>
                 ) : resolvedAddress ? (
                   <View style={styles.addressRow}>
-                    <Ionicons name="location" size={14} color={theme.color.accent} />
+                    <MaterialCommunityIcons name="map-marker" size={14} color={theme.color.accent} />
                     <Text style={styles.addressText}>{resolvedAddress}</Text>
                   </View>
                 ) : null}
@@ -455,7 +453,11 @@ export default function CheckInScreen() {
               {QUALITY_LEVELS.map((level) => {
                 const active = quality === level.value;
                 const color =
-                  level.value > 0 ? theme.color.accent : level.value < 0 ? theme.color.danger : theme.color.textMuted;
+                  level.value > QUALITY_NEUTRAL
+                    ? theme.color.accent
+                    : level.value < QUALITY_NEUTRAL
+                    ? theme.color.danger
+                    : theme.color.textMuted;
                 return (
                   <Pressable
                     key={level.value}
@@ -465,9 +467,7 @@ export default function CheckInScreen() {
                     ]}
                     onPress={() => setQuality(level.value)}
                   >
-                    <Text style={[styles.qualityValue, active && { color }]}>
-                      {level.value > 0 ? `+${level.value}` : `${level.value}`}
-                    </Text>
+                    <Text style={[styles.qualityValue, active && { color }]}>{level.value}</Text>
                     <Text style={[styles.qualityLabel, active && { color }]}>{level.label}</Text>
                   </Pressable>
                 );
@@ -501,7 +501,7 @@ export default function CheckInScreen() {
                 style={[styles.timerButton, timerRunning && styles.timerButtonActive]}
                 onPress={toggleTimer}
               >
-                <Ionicons name={timerRunning ? "stop" : "play"} size={18} color={theme.color.background} />
+                <MaterialCommunityIcons name={timerRunning ? "stop" : "play"} size={18} color={theme.color.background} />
                 <Text style={styles.timerButtonLabel}>
                   {timerRunning ? formatClock(elapsedSeconds) : "Start timer"}
                 </Text>
@@ -521,7 +521,7 @@ export default function CheckInScreen() {
                 returnKeyType="done"
               />
               <Pressable style={styles.addButton} onPress={addParticipant}>
-                <Ionicons name="add" size={20} color={theme.color.background} />
+                <MaterialCommunityIcons name="plus" size={20} color={theme.color.background} />
               </Pressable>
             </View>
             {participants.length > 0 ? (
@@ -535,7 +535,7 @@ export default function CheckInScreen() {
 
           {formError ? (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={16} color={theme.color.danger} />
+              <MaterialCommunityIcons name="alert-circle" size={16} color={theme.color.danger} />
               <Text style={styles.errorText}>{formError}</Text>
             </View>
           ) : null}
@@ -558,7 +558,7 @@ export default function CheckInScreen() {
               onPress={handleDelete}
               disabled={submitting}
             >
-              <Ionicons name="trash-outline" size={16} color={theme.color.danger} />
+              <MaterialCommunityIcons name="trash-can-outline" size={16} color={theme.color.danger} />
               <Text style={styles.deleteLabel}>{confirmDelete ? "Tap again to delete" : "Delete check-in"}</Text>
             </Pressable>
           ) : null}
@@ -600,7 +600,7 @@ function LocationCard({ state, onRetry }: { state: LocationState; onRetry: () =>
         <Text style={styles.locationMuted}>{state.message}</Text>
         <Text style={styles.locationHint}>You can still save this check-in without a location.</Text>
         <Pressable onPress={onRetry} style={styles.locationButton}>
-          <Ionicons name="location" size={16} color={theme.color.background} />
+          <MaterialCommunityIcons name="map-marker" size={16} color={theme.color.background} />
           <Text style={styles.locationButtonLabel}>Use my location</Text>
         </Pressable>
       </View>
@@ -609,14 +609,14 @@ function LocationCard({ state, onRetry }: { state: LocationState; onRetry: () =>
   return (
     <View style={styles.locationCard}>
       <View style={styles.locationRow}>
-        <Ionicons name="location" size={16} color={theme.color.accent} />
+        <MaterialCommunityIcons name="map-marker" size={16} color={theme.color.accent} />
         <Text style={styles.locationText}>
           {state.placeLabel ?? `${state.coords.latitude.toFixed(3)}, ${state.coords.longitude.toFixed(3)}`}
         </Text>
       </View>
       {state.weather ? (
         <View style={styles.locationRow}>
-          <Ionicons name="partly-sunny" size={16} color={theme.color.accentBlue} />
+          <MaterialCommunityIcons name="weather-partly-cloudy" size={16} color={theme.color.accentBlue} />
           <Text style={styles.locationText}>
             {formatTemperature(state.weather.temperatureC, "F")} · {state.weather.weatherCondition} · dewpoint{" "}
             {formatTemperature(state.weather.dewpointC, "F")}

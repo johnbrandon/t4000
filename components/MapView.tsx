@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import type { MapPoint } from "../lib/mapPoints";
 import { theme } from "../lib/theme";
@@ -9,7 +9,7 @@ export default function MapView({ points }: { points: MapPoint[] }) {
   return (
     <View style={styles.container}>
       <View style={styles.note}>
-        <Ionicons name="map-outline" size={18} color={theme.color.textMuted} />
+        <MaterialCommunityIcons name="map-outline" size={18} color={theme.color.textMuted} />
         <Text style={styles.noteText}>The interactive map is available in the web app.</Text>
       </View>
       <FlatList

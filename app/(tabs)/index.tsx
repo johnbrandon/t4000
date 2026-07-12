@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
@@ -58,7 +58,7 @@ export default function FeedScreen() {
             <View style={styles.header}>
               <Text style={styles.title}>Check In</Text>
               <Pressable style={styles.newButton} onPress={() => router.push("/check-in")}>
-                <Ionicons name="add" size={22} color={theme.color.background} />
+                <MaterialCommunityIcons name="plus" size={22} color={theme.color.background} />
               </Pressable>
             </View>
             <View style={styles.statsRow}>
@@ -93,7 +93,7 @@ export default function FeedScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.empty}>
-              <Ionicons name="pulse-outline" size={40} color={theme.color.textMuted} />
+              <MaterialCommunityIcons name="pulse" size={40} color={theme.color.textMuted} />
               <Text style={styles.emptyTitle}>No check-ins yet</Text>
               <Text style={styles.emptyBody}>Log your first interaction to start filling in your year.</Text>
             </View>

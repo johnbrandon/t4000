@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,7 +24,7 @@ export default function MapScreen() {
           <MapView points={points} />
         ) : (
           <View style={styles.empty}>
-            <Ionicons name="location-outline" size={40} color={theme.color.textMuted} />
+            <MaterialCommunityIcons name="map-marker-outline" size={40} color={theme.color.textMuted} />
             <Text style={styles.emptyTitle}>No located check-ins yet</Text>
             <Text style={styles.emptyBody}>
               Check in with location enabled — or add a past check-in with coordinates — and pins will

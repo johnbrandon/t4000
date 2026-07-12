@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -89,7 +89,7 @@ export default function ProfileScreen() {
               return (
                 <View key={name} style={styles.breakdownRow}>
                   <View style={[styles.personBadge, { backgroundColor: color + "26", borderColor: color }]}>
-                    <Ionicons name="person" size={12} color={color} />
+                    <MaterialCommunityIcons name="account" size={12} color={color} />
                   </View>
                   <Text style={styles.breakdownLabel} numberOfLines={1}>
                     {name}

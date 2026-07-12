@@ -1,12 +1,12 @@
 {
   "name": "Check In — Time Tracking",
   "short_name": "Check In",
-  "description": "A Foursquare, Strava, and Whoop inspired check-in tracker with a 4000-weeks life visualization.",
+  "description": "A Foursquare, Strava, and Whoop inspired check-in tracker with a year-in-days visualization.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0B0B0F",
-  "theme_color": "#0B0B0F",
+  "background_color": "#F4F5F7",
+  "theme_color": "#F4F5F7",
   "orientation": "portrait",
   "icons": [
     {

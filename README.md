@@ -24,11 +24,11 @@ that day's main activity.
   **in the past** by entering a date, time, and coordinates — the street address
   is resolved live and historical temperature/weather/dewpoint are looked up from
   Open-Meteo's archive. Location is best-effort: a check-in still saves without it.
-  **Choose one or more** interaction tags (Biz dev, Buyer, Call, Coffee, Email,
-  Landlord, Other, Renter, Seller, Showing, Social, Sphere, Text, Travel) and rate
-  the **interaction quality** on a −2…+2 scale.
+  **Choose one or more** interaction tags (Biz dev, Buyer, Coffee, Landlord,
+  Meeting, Other, Renter, Seller, Social, Sphere, Subway) and rate the
+  **interaction quality** on a 1…5 scale. Length of activity is optional.
 - **This Year** — a 12-month × 31-day calendar (months across, days down) where
-  each square is shaded by that day's temperature, blue (20°F) → red (95°F).
+  each square is shaded by that day's temperature, blue (0°F) → red (100°F).
   Check-in days use the recorded temperature; other past days are backfilled from
   historical daily means at a default location. Below it, a stack of tiles:
   interaction quality (diverging around a neutral 0 line), average temperature,
@@ -42,6 +42,8 @@ that day's main activity.
 ## Tech
 
 - **Expo SDK 57** with **expo-router** (file-based routing under `app/`)
+- Light color scheme with **Material Design icons** (`@expo/vector-icons`
+  MaterialCommunityIcons)
 - **expo-sqlite** for persistence — native on iOS/Android, `wa-sqlite` (WASM +
   OPFS) on web, so data survives reloads without a server
 - **PWA**: web export runs as an installable, offline-capable single-page app

@@ -117,7 +117,7 @@ export default function YearScreen() {
         <Text style={styles.title}>This Year</Text>
         <Text style={styles.subtitle}>
           Every square is a day of {year} (months across, days down), shaded by that day's average
-          temperature — blue (20°F) to red (95°F). Days without a check-in are backfilled from history.
+          temperature — blue (0°F) to red (100°F). Days without a check-in are backfilled from history.
         </Text>
 
         {years.length > 1 ? (

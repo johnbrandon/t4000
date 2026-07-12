@@ -1,27 +1,28 @@
 export const ACTIVITY_TYPES = [
   "Biz dev",
   "Buyer",
-  "Call",
   "Coffee",
-  "Email",
   "Landlord",
+  "Meeting",
   "Other",
   "Renter",
   "Seller",
-  "Showing",
   "Social",
   "Sphere",
-  "Text",
-  "Travel",
+  "Subway",
 ] as const;
 
-// Interaction quality: a 5-step scale from -2 (very negative) to +2 (very positive).
+// Interaction quality: a 5-step scale from 1 (worst) to 5 (best), 3 = neutral.
+export const QUALITY_MIN = 1;
+export const QUALITY_MAX = 5;
+export const QUALITY_NEUTRAL = 3;
+
 export const QUALITY_LEVELS = [
-  { value: 2, label: "Great" },
-  { value: 1, label: "Good" },
-  { value: 0, label: "Neutral" },
-  { value: -1, label: "Poor" },
-  { value: -2, label: "Bad" },
+  { value: 5, label: "Great" },
+  { value: 4, label: "Good" },
+  { value: 3, label: "Neutral" },
+  { value: 2, label: "Poor" },
+  { value: 1, label: "Bad" },
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];

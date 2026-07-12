@@ -15,7 +15,7 @@ export function registerPwa() {
   addHeadTag("link", { rel: "manifest", href: withBase("/manifest.json") });
   addHeadTag("link", { rel: "apple-touch-icon", href: withBase("/icon-512.png") });
   addHeadTag("meta", { name: "apple-mobile-web-app-capable", content: "yes" });
-  addHeadTag("meta", { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" });
+  addHeadTag("meta", { name: "apple-mobile-web-app-status-bar-style", content: "default" });
   addHeadTag("meta", { name: "apple-mobile-web-app-title", content: "Check In" });
 
   if ("serviceWorker" in navigator) {

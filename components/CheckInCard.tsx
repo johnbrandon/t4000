@@ -1,8 +1,8 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "../lib/theme";
 import { formatDuration, formatRelativeTime } from "../lib/time";
-import type { CheckIn } from "../lib/types";
+import { QUALITY_NEUTRAL, type CheckIn } from "../lib/types";
 import { formatTemperature } from "../lib/weather";
 import ActivityIcon from "./ActivityIcon";
 
@@ -37,16 +37,16 @@ export default function CheckInCard({
       {checkIn.purpose ? <Text style={styles.purpose}>{checkIn.purpose}</Text> : null}
 
       <View style={styles.statsRow}>
-        <Stat icon="time-outline" label={formatDuration(checkIn.durationMinutes)} />
+        <Stat icon="clock-outline" label={formatDuration(checkIn.durationMinutes)} />
         <QualityStat value={checkIn.quality} />
-        <Stat icon="thermometer-outline" label={formatTemperature(checkIn.temperatureC, temperatureUnit)} />
+        <Stat icon="thermometer" label={formatTemperature(checkIn.temperatureC, temperatureUnit)} />
         <Stat icon="water-outline" label={`${formatTemperature(checkIn.dewpointC, temperatureUnit)} dp`} />
-        {checkIn.weatherCondition ? <Stat icon="partly-sunny-outline" label={checkIn.weatherCondition} /> : null}
+        {checkIn.weatherCondition ? <Stat icon="weather-partly-cloudy" label={checkIn.weatherCondition} /> : null}
       </View>
 
       {checkIn.participants.length > 0 ? (
         <View style={styles.participantsRow}>
-          <Ionicons name="people-outline" size={14} color={theme.color.textMuted} />
+          <MaterialCommunityIcons name="account-group-outline" size={14} color={theme.color.textMuted} />
           <Text style={styles.participants}>{checkIn.participants.join(", ")}</Text>
         </View>
       ) : null}
@@ -54,22 +54,28 @@ export default function CheckInCard({
   );
 }
 
-function Stat({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+function Stat({ icon, label }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }) {
   return (
     <View style={styles.stat}>
-      <Ionicons name={icon} size={14} color={theme.color.textMuted} />
+      <MaterialCommunityIcons name={icon} size={14} color={theme.color.textMuted} />
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
 function QualityStat({ value }: { value: number }) {
-  const color = value > 0 ? theme.color.accent : value < 0 ? theme.color.danger : theme.color.textMuted;
-  const icon = value > 0 ? "happy-outline" : value < 0 ? "sad-outline" : "remove-outline";
+  const color =
+    value > QUALITY_NEUTRAL ? theme.color.accent : value < QUALITY_NEUTRAL ? theme.color.danger : theme.color.textMuted;
+  const icon =
+    value > QUALITY_NEUTRAL
+      ? "emoticon-happy-outline"
+      : value < QUALITY_NEUTRAL
+      ? "emoticon-sad-outline"
+      : "emoticon-neutral-outline";
   return (
     <View style={styles.stat}>
-      <Ionicons name={icon} size={14} color={color} />
-      <Text style={[styles.statLabel, { color }]}>{value > 0 ? `+${value}` : `${value}`}</Text>
+      <MaterialCommunityIcons name={icon} size={14} color={color} />
+      <Text style={[styles.statLabel, { color }]}>{`${value}/5`}</Text>
     </View>
   );
 }
