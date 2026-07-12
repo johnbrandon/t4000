@@ -1,10 +1,11 @@
 export const ACTIVITY_TYPES = [
   "Buyer",
+  "Deep work / biz dev",
   "Landlord",
   "Renter",
   "Seller",
   "Social",
-  "Sphere of influence",
+  "Sphere",
   "Travel",
 ] as const;
 

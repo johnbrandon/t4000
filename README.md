@@ -24,7 +24,8 @@ that day's main activity.
   **in the past** by entering a date, time, and coordinates — the street address
   is resolved live and historical temperature/weather/dewpoint are looked up from
   Open-Meteo's archive. Location is best-effort: a check-in still saves without it.
-  Activity types: Buyer, Landlord, Renter, Seller, Social, Sphere of influence, Travel.
+  Activity types: Buyer, Deep work / biz dev, Landlord, Renter, Seller, Social,
+  Sphere, Travel. Tap a feed card to edit or delete a check-in.
 - **This Year** — a 12-month × 31-day calendar (months across, days down) where
   each square is shaded by that day's average temperature, blue (cold) → red
   (hot). Below it, a chart plots the daily 10-year Treasury yield (FRED) against

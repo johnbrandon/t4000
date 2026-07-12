@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
-import { getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
+import { deleteCheckIn, getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
 import { activityColor, theme } from "../../lib/theme";
 import { ACTIVITY_TYPES, type ActivityType } from "../../lib/types";
@@ -73,6 +73,7 @@ export default function CheckInScreen() {
   const [lonInput, setLonInput] = useState("");
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
   const [addressLoading, setAddressLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const existingWeather = useRef<WeatherSnapshot | null>(null);
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
@@ -214,6 +215,24 @@ export default function CheckInScreen() {
     setElapsedSeconds(0);
     setLatInput("");
     setLonInput("");
+  }
+
+  async function handleDelete() {
+    if (!editId) return;
+    // Two-tap confirm (Alert has no web implementation).
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 4000);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await deleteCheckIn(editId);
+      router.push("/");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Couldn't delete the check-in.");
+      setSubmitting(false);
+    }
   }
 
   async function handleSubmit() {
@@ -493,6 +512,17 @@ export default function CheckInScreen() {
               <Text style={styles.submitLabel}>{editing ? "Save changes" : "Save check-in"}</Text>
             )}
           </Pressable>
+
+          {editing ? (
+            <Pressable
+              style={[styles.deleteButton, confirmDelete && styles.deleteButtonConfirm]}
+              onPress={handleDelete}
+              disabled={submitting}
+            >
+              <Ionicons name="trash-outline" size={16} color={theme.color.danger} />
+              <Text style={styles.deleteLabel}>{confirmDelete ? "Tap again to delete" : "Delete check-in"}</Text>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -759,5 +789,25 @@ const styles = StyleSheet.create({
     color: theme.color.background,
     fontSize: theme.font.subtitle,
     fontWeight: "800",
+  },
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: theme.spacing(3),
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.color.danger + "55",
+    marginTop: theme.spacing(3),
+  },
+  deleteButtonConfirm: {
+    backgroundColor: theme.color.danger + "1A",
+    borderColor: theme.color.danger,
+  },
+  deleteLabel: {
+    color: theme.color.danger,
+    fontSize: theme.font.body,
+    fontWeight: "700",
   },
 });

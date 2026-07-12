@@ -7,8 +7,7 @@ import YearGrid from "../../components/YearGrid";
 import YieldChart, { type YieldStatus } from "../../components/YieldChart";
 import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
 import { useCheckIns, useSettings } from "../../lib/hooks";
-import { computeStats } from "../../lib/stats";
-import { theme } from "../../lib/theme";
+import { TEMP_MAX_C, TEMP_MIN_C, theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import { fetchTreasuryYields } from "../../lib/treasury";
 
@@ -70,7 +69,23 @@ export default function YearScreen() {
     return { activeDays: dayData.size, totalMinutes, checkInCount };
   }, [dayData]);
 
-  const streak = useMemo(() => computeStats(checkIns).currentStreakDays, [checkIns]);
+  // Fit the temperature gradient to the year's actual range so the full
+  // blue→red spread is used (strong contrast), with a floor so a mild year
+  // still shows variation.
+  const tempDomain = useMemo(() => {
+    const temps = [...dayData.values()].map((d) => d.avgTempC).filter((v): v is number => v != null);
+    if (temps.length < 2) return { min: TEMP_MIN_C, max: TEMP_MAX_C };
+    let min = Math.min(...temps);
+    let max = Math.max(...temps);
+    const MIN_SPAN = 6;
+    if (max - min < MIN_SPAN) {
+      const mid = (min + max) / 2;
+      min = mid - MIN_SPAN / 2;
+      max = mid + MIN_SPAN / 2;
+    }
+    return { min, max };
+  }, [dayData]);
+
   const selectedSummary: DaySummary | null = selectedDate ? dayData.get(selectedDate) ?? null : null;
 
   return (
@@ -96,7 +111,6 @@ export default function YearScreen() {
         <View style={styles.statsRow}>
           <StatCard label="Days active" value={String(yearStats.activeDays)} accent={theme.color.accent} />
           <StatCard label="Check-ins" value={String(yearStats.checkInCount)} accent={theme.color.accentBlue} />
-          <StatCard label="Streak" value={`${streak}d`} accent={theme.color.accentAlt} />
         </View>
 
         <View style={styles.gridCard}>
@@ -106,6 +120,8 @@ export default function YearScreen() {
             selectedDate={selectedDate}
             onSelectDay={setSelectedDate}
             temperatureUnit={settings.temperatureUnit}
+            tempMin={tempDomain.min}
+            tempMax={tempDomain.max}
           />
         </View>
 

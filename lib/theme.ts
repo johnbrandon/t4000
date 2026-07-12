@@ -31,11 +31,12 @@ export const theme = {
 
 export const activityColors: Record<string, string> = {
   Buyer: "#3DDC97",
+  "Deep work / biz dev": "#8B95FF",
   Landlord: "#4C8DFF",
   Renter: "#C792EA",
   Seller: "#FF6154",
   Social: "#FF8DC7",
-  "Sphere of influence": "#4CD3E0",
+  Sphere: "#4CD3E0",
   Travel: "#F5B942",
 };
 
@@ -43,14 +44,17 @@ export function activityColor(activity: string): string {
   return activityColors[activity] ?? theme.color.accent;
 }
 
-// Temperature gradient: cold (blue) -> hot (red), spanning -10°C..38°C
-// (~14°F..100°F). Uses HSL hue 240 (blue) down to 0 (red) through green.
-export const TEMP_MIN_C = -10;
-export const TEMP_MAX_C = 38;
+// Temperature gradient: cold (blue) -> hot (red). Uses HSL hue 240 (blue) down
+// to 0 (red) through green. The domain is usually derived from the actual data
+// (see YearScreen) so the full gradient is used and contrast stays strong; these
+// constants are only the fallback when there isn't enough data.
+export const TEMP_MIN_C = 0;
+export const TEMP_MAX_C = 30;
 
-export function tempToColor(celsius: number): string {
-  const clamped = Math.max(TEMP_MIN_C, Math.min(TEMP_MAX_C, celsius));
-  const t = (clamped - TEMP_MIN_C) / (TEMP_MAX_C - TEMP_MIN_C);
+export function tempToColor(celsius: number, minC = TEMP_MIN_C, maxC = TEMP_MAX_C): string {
+  const span = maxC - minC || 1;
+  const clamped = Math.max(minC, Math.min(maxC, celsius));
+  const t = (clamped - minC) / span;
   const hue = 240 * (1 - t);
-  return `hsl(${Math.round(hue)}, 68%, 52%)`;
+  return `hsl(${Math.round(hue)}, 70%, 52%)`;
 }

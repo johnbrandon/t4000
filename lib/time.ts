@@ -18,11 +18,13 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Weeks start on Monday for weekly time tracking.
 export function startOfWeek(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay();
+  const day = d.getDay(); // 0 = Sunday .. 6 = Saturday
+  const daysSinceMonday = (day + 6) % 7; // Monday -> 0, Sunday -> 6
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - day);
+  d.setDate(d.getDate() - daysSinceMonday);
   return d;
 }
 

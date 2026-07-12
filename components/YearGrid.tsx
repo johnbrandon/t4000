@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
-import { dateKey, daysInMonth, localDayKey, MONTH_LABELS, type DaySummary } from "../lib/dayGrid";
+import { dateKey, daysInMonth, localDayKey, MONTH_INITIALS, type DaySummary } from "../lib/dayGrid";
 import { TEMP_MAX_C, TEMP_MIN_C, tempToColor, theme } from "../lib/theme";
 import { formatTemperature } from "../lib/weather";
 
@@ -17,12 +17,16 @@ const YearGrid = memo(function YearGrid({
   onSelectDay,
   selectedDate,
   temperatureUnit,
+  tempMin = TEMP_MIN_C,
+  tempMax = TEMP_MAX_C,
 }: {
   year: number;
   dayData: Map<string, DaySummary>;
   onSelectDay?: (date: string) => void;
   selectedDate?: string | null;
   temperatureUnit: "C" | "F";
+  tempMin?: number;
+  tempMax?: number;
 }) {
   const now = useMemo(() => new Date(), []);
   const todayKey = localDayKey(now);
@@ -44,10 +48,10 @@ const YearGrid = memo(function YearGrid({
     <View onLayout={handleLayout}>
       {width > 0 ? (
         <View>
-          {/* Month labels */}
+          {/* Month labels (first letter only) */}
           <View style={[styles.row, { marginLeft: DAY_LABEL_W }]}>
-            {MONTH_LABELS.map((label) => (
-              <View key={label} style={{ width: colW }}>
+            {MONTH_INITIALS.map((label, m) => (
+              <View key={m} style={{ width: colW, alignItems: "center" }}>
                 <Text style={styles.monthLabel} numberOfLines={1}>
                   {label}
                 </Text>
@@ -75,7 +79,7 @@ const YearGrid = memo(function YearGrid({
                   const isFuture = key > todayKey;
 
                   let backgroundColor: string;
-                  if (summary?.avgTempC != null) backgroundColor = tempToColor(summary.avgTempC);
+                  if (summary?.avgTempC != null) backgroundColor = tempToColor(summary.avgTempC, tempMin, tempMax);
                   else if (summary) backgroundColor = theme.color.textMuted; // checked in, no temp
                   else if (isFuture) backgroundColor = "transparent";
                   else backgroundColor = theme.color.surfaceRaised;
@@ -102,25 +106,33 @@ const YearGrid = memo(function YearGrid({
             );
           })}
 
-          <Legend temperatureUnit={temperatureUnit} />
+          <Legend temperatureUnit={temperatureUnit} tempMin={tempMin} tempMax={tempMax} />
         </View>
       ) : null}
     </View>
   );
 });
 
-function Legend({ temperatureUnit }: { temperatureUnit: "C" | "F" }) {
+function Legend({
+  temperatureUnit,
+  tempMin,
+  tempMax,
+}: {
+  temperatureUnit: "C" | "F";
+  tempMin: number;
+  tempMax: number;
+}) {
   const steps = 10;
   return (
     <View style={styles.legend}>
-      <Text style={styles.legendLabel}>{formatTemperature(TEMP_MIN_C, temperatureUnit)}</Text>
+      <Text style={styles.legendLabel}>{formatTemperature(tempMin, temperatureUnit)}</Text>
       <View style={styles.legendBar}>
         {Array.from({ length: steps }, (_, i) => {
-          const c = TEMP_MIN_C + ((TEMP_MAX_C - TEMP_MIN_C) * i) / (steps - 1);
-          return <View key={i} style={[styles.legendSwatch, { backgroundColor: tempToColor(c) }]} />;
+          const c = tempMin + ((tempMax - tempMin) * i) / (steps - 1);
+          return <View key={i} style={[styles.legendSwatch, { backgroundColor: tempToColor(c, tempMin, tempMax) }]} />;
         })}
       </View>
-      <Text style={styles.legendLabel}>{formatTemperature(TEMP_MAX_C, temperatureUnit)}</Text>
+      <Text style={styles.legendLabel}>{formatTemperature(tempMax, temperatureUnit)}</Text>
       <View style={[styles.legendGray, { backgroundColor: theme.color.textMuted }]} />
       <Text style={styles.legendLabel}>no temp</Text>
     </View>
