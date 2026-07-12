@@ -176,6 +176,33 @@ export async function fetchWeatherAt(
 // per location+year for the session.
 const dailyMeanCache = new Map<string, Map<string, number>>();
 
+interface DailyResponse {
+  daily?: { time?: string[]; temperature_2m_mean?: (number | null)[] };
+}
+
+function mergeDaily(target: Map<string, number>, data: DailyResponse | null) {
+  const times = data?.daily?.time ?? [];
+  const means = data?.daily?.temperature_2m_mean ?? [];
+  times.forEach((t, i) => {
+    const v = means[i];
+    if (typeof v === "number") target.set(t, v);
+  });
+}
+
+async function fetchDaily(url: string): Promise<DailyResponse | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return null;
+    return (await response.json()) as DailyResponse;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function fetchDailyMeanTemps(
   latitude: number,
   longitude: number,
@@ -185,27 +212,27 @@ export async function fetchDailyMeanTemps(
   const cached = dailyMeanCache.get(cacheKey);
   if (cached) return cached;
 
-  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${year}-01-01&end_date=${year}-12-31&daily=temperature_2m_mean&timezone=auto`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return new Map();
-    const data = await response.json();
-    const times: string[] = data.daily?.time ?? [];
-    const means: (number | null)[] = data.daily?.temperature_2m_mean ?? [];
-    const map = new Map<string, number>();
-    times.forEach((t, i) => {
-      const v = means[i];
-      if (typeof v === "number") map.set(t, v);
-    });
-    if (map.size > 0) dailyMeanCache.set(cacheKey, map);
-    return map;
-  } catch {
-    return new Map();
-  } finally {
-    clearTimeout(timeout);
+  const now = new Date();
+  const nowYear = now.getFullYear();
+  if (year > nowYear) return new Map(); // no history for a future year
+
+  const map = new Map<string, number>();
+
+  // End date is today for the current year (the archive only rejects dates
+  // strictly in the future), or the year's end for past years.
+  const archiveEnd = year < nowYear ? `${year}-12-31` : localDateKey(now);
+  const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${year}-01-01&end_date=${archiveEnd}&daily=temperature_2m_mean&timezone=auto`;
+  mergeDaily(map, await fetchDaily(archiveUrl));
+
+  // The archive lags a few days; fill the most recent days for the current year
+  // from the forecast API so every day up to today is covered.
+  if (year === nowYear) {
+    const forecastUrl = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_mean&past_days=14&forecast_days=1&timezone=auto`;
+    mergeDaily(map, await fetchDaily(forecastUrl));
   }
+
+  if (map.size > 0) dailyMeanCache.set(cacheKey, map);
+  return map;
 }
 
 export function celsiusToFahrenheit(celsius: number): number {
