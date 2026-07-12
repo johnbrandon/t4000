@@ -131,12 +131,12 @@ function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export async function insertCheckIn(input: NewCheckIn): Promise<CheckIn> {
+export async function insertCheckIn(input: NewCheckIn, createdAt?: string): Promise<CheckIn> {
   const db = await getDb();
   const checkIn: CheckIn = {
     ...input,
     id: makeId(),
-    createdAt: new Date().toISOString(),
+    createdAt: createdAt ?? new Date().toISOString(),
   };
   await db.runAsync(
     `INSERT INTO check_ins

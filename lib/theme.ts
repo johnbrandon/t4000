@@ -49,3 +49,15 @@ export const activityColors: Record<string, string> = {
 export function activityColor(activity: string): string {
   return activityColors[activity] ?? theme.color.accent;
 }
+
+// Temperature gradient: cold (blue) -> hot (red), spanning -10°C..38°C
+// (~14°F..100°F). Uses HSL hue 240 (blue) down to 0 (red) through green.
+export const TEMP_MIN_C = -10;
+export const TEMP_MAX_C = 38;
+
+export function tempToColor(celsius: number): string {
+  const clamped = Math.max(TEMP_MIN_C, Math.min(TEMP_MAX_C, celsius));
+  const t = (clamped - TEMP_MIN_C) / (TEMP_MAX_C - TEMP_MIN_C);
+  const hue = 240 * (1 - t);
+  return `hsl(${Math.round(hue)}, 68%, 52%)`;
+}

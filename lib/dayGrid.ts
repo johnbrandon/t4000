@@ -1,4 +1,3 @@
-import { activityColor } from "./theme";
 import type { CheckIn } from "./types";
 
 export interface DaySummary {
@@ -6,7 +5,7 @@ export interface DaySummary {
   count: number;
   totalMinutes: number;
   dominantActivity: string;
-  color: string;
+  avgTempC: number | null; // average recorded temperature that day, if any
   checkIns: CheckIn[];
 }
 
@@ -34,9 +33,15 @@ export function summarizeByDay(checkIns: CheckIn[], year: number): Map<string, D
   for (const [date, entries] of byDay) {
     const counts = new Map<string, number>();
     let totalMinutes = 0;
+    let tempSum = 0;
+    let tempCount = 0;
     for (const entry of entries) {
       counts.set(entry.activityType, (counts.get(entry.activityType) ?? 0) + 1);
       totalMinutes += entry.durationMinutes;
+      if (typeof entry.temperatureC === "number") {
+        tempSum += entry.temperatureC;
+        tempCount += 1;
+      }
     }
     const dominantActivity = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
     summaries.set(date, {
@@ -44,50 +49,19 @@ export function summarizeByDay(checkIns: CheckIn[], year: number): Map<string, D
       count: entries.length,
       totalMinutes,
       dominantActivity,
-      color: activityColor(dominantActivity),
+      avgTempC: tempCount > 0 ? tempSum / tempCount : null,
       checkIns: entries,
     });
   }
   return summaries;
 }
 
-export interface DayCell {
-  date: string;
-  day: Date;
-  isFuture: boolean;
+export function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
 }
 
-// Lay the year out as calendar columns (weeks) of 7 weekday rows (Sun..Sat),
-// GitHub-contributions style. Leading/trailing slots outside the year are null.
-export function buildYearColumns(year: number, now: Date = new Date()): (DayCell | null)[][] {
-  const firstDay = new Date(year, 0, 1);
-  const lastDay = new Date(year, 11, 31);
-  const columns: (DayCell | null)[][] = [];
-
-  let current = new Date(firstDay);
-  // Back up to the Sunday that starts the first week.
-  current.setDate(current.getDate() - current.getDay());
-
-  const todayKey = localDayKey(now);
-  while (current <= lastDay || current.getDay() !== 0) {
-    const column: (DayCell | null)[] = [];
-    for (let row = 0; row < 7; row++) {
-      if (current < firstDay || current > lastDay) {
-        column.push(null);
-      } else {
-        const key = localDayKey(current);
-        column.push({
-          date: key,
-          day: new Date(current),
-          isFuture: key > todayKey,
-        });
-      }
-      current.setDate(current.getDate() + 1);
-    }
-    columns.push(column);
-    if (current > lastDay && current.getDay() === 0) break;
-  }
-  return columns;
+export function dateKey(year: number, month: number, day: number): string {
+  return `${year}-${`${month + 1}`.padStart(2, "0")}-${`${day}`.padStart(2, "0")}`;
 }
 
 export const MONTH_LABELS = [

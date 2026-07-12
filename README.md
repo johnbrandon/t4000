@@ -8,9 +8,9 @@ that day's main activity.
 
 ## What a check-in captures
 
-- Latitude & longitude (via `expo-location`)
+- Latitude & longitude (device geolocation, or entered manually for past check-ins)
 - Place label (keyless reverse geocoding)
-- Temperature, weather condition & dewpoint (Open-Meteo, keyless)
+- Temperature, weather condition & dewpoint (Open-Meteo — current or historical, keyless)
 - Length of activity (manual entry or built-in stopwatch)
 - Type of activity (Run, Ride, Strength, Work, Meal, …)
 - Purpose of the activity
@@ -19,10 +19,15 @@ that day's main activity.
 ## Screens
 
 - **Feed** — reverse-chronological activity feed with week stats and a streak.
-- **Check In** — capture a new check-in; auto-fetches location and weather.
+- **Check In** — capture a check-in **now** (auto-fetches location + weather), or
+  **in the past** by entering a date, time, and coordinates — historical
+  temperature/weather/dewpoint are looked up from Open-Meteo's archive.
   Location is best-effort: a check-in still saves if location is unavailable.
-- **This Year** — a calendar where every square is a day of the year; days you
-  checked in are colored by their dominant activity. Tap a day to inspect it.
+- **This Year** — a 12-month × 31-day calendar (months across, days down) where
+  each square is shaded by that day's average temperature, blue (cold) → red
+  (hot). Tap a day to inspect its check-ins.
+- **Map** — an interactive map (Leaflet + OpenStreetMap on web) with a pin for
+  every check-in that recorded coordinates, colored by activity.
 - **Profile** — temperature unit, streak, and a breakdown of where your time goes.
 
 ## Tech
@@ -81,17 +86,21 @@ app/                     expo-router routes
   _layout.tsx            root stack + PWA registration
   (tabs)/                bottom-tab navigator
     index.tsx            Feed
-    check-in.tsx         New check-in
-    year.tsx             This Year (day calendar) visualization
+    check-in.tsx         New check-in (now / in the past)
+    year.tsx             This Year (temperature calendar) visualization
+    map.tsx              Map of located check-ins
     profile.tsx          Profile & settings
 components/              presentational UI (cards, chips, grid, icons)
+  YearGrid.tsx          12×31 month/day temperature grid
+  MapView.web.tsx       Leaflet map (web); MapView.tsx is the native fallback
 lib/                     data + domain logic
   db.ts                 SQLite schema, migrations, CRUD, change subscription
-  weather.ts            Open-Meteo client + unit helpers
+  weather.ts            Open-Meteo client (current + historical) + unit helpers
   location.ts           geolocation (web + native) + reverse geocoding
-  dayGrid.ts            bucket check-ins into calendar days
+  dayGrid.ts            bucket check-ins into calendar days + avg temperature
+  mapPoints.ts          derive map pins from check-ins
   stats.ts              feed stats (streaks, weekly totals)
   time.ts               duration & relative-time formatting
-  theme.ts              design tokens
+  theme.ts              design tokens + temperature gradient
 public/                 PWA manifest, service worker, icons
 ```

@@ -5,13 +5,14 @@ import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
 import YearGrid from "../../components/YearGrid";
 import { summarizeByDay, type DaySummary } from "../../lib/dayGrid";
-import { useCheckIns } from "../../lib/hooks";
+import { useCheckIns, useSettings } from "../../lib/hooks";
 import { computeStats } from "../../lib/stats";
 import { theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 
 export default function YearScreen() {
   const { checkIns } = useCheckIns();
+  const { settings } = useSettings();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -42,7 +43,8 @@ export default function YearScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>This Year</Text>
         <Text style={styles.subtitle}>
-          Each square is a day of {year}. Days you checked in are colored by their main activity.
+          Every square is a day of {year} (months across, days down), shaded by that day's average
+          temperature — blue is cold, red is hot.
         </Text>
 
         {years.length > 1 ? (
@@ -63,7 +65,13 @@ export default function YearScreen() {
         </View>
 
         <View style={styles.gridCard}>
-          <YearGrid year={year} dayData={dayData} selectedDate={selectedDate} onSelectDay={setSelectedDate} />
+          <YearGrid
+            year={year}
+            dayData={dayData}
+            selectedDate={selectedDate}
+            onSelectDay={setSelectedDate}
+            temperatureUnit={settings.temperatureUnit}
+          />
         </View>
 
         {selectedSummary ? (

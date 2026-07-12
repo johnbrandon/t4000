@@ -18,7 +18,33 @@ import { insertCheckIn } from "../../lib/db";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
 import { activityColor, theme } from "../../lib/theme";
 import { ACTIVITY_TYPES, type ActivityType } from "../../lib/types";
-import { fetchWeather, formatTemperature, type WeatherSnapshot } from "../../lib/weather";
+import { fetchWeather, fetchWeatherAt, formatTemperature, type WeatherSnapshot } from "../../lib/weather";
+
+type Mode = "now" | "past";
+
+function pad(n: number): string {
+  return `${n}`.padStart(2, "0");
+}
+
+function nowDateString(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function nowTimeString(d: Date): string {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Parse local "YYYY-MM-DD" + "HH:MM" into a Date, or null if malformed.
+function parsePastDateTime(dateStr: string, timeStr: string): Date | null {
+  const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
+  const tm = /^(\d{1,2}):(\d{2})$/.exec(timeStr.trim());
+  if (!dm || !tm) return null;
+  const [, y, mo, d] = dm.map(Number);
+  const [, h, mi] = tm.map(Number);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
+  const date = new Date(y, mo - 1, d, h, mi, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
 type LocationState =
   | { status: "loading" }
@@ -35,6 +61,13 @@ export default function CheckInScreen() {
   const [durationMinutes, setDurationMinutes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<Mode>("now");
+  const initial = useRef(new Date());
+  const [pastDate, setPastDate] = useState(nowDateString(initial.current));
+  const [pastTime, setPastTime] = useState(nowTimeString(initial.current));
+  const [latInput, setLatInput] = useState("");
+  const [lonInput, setLonInput] = useState("");
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
 
@@ -96,6 +129,25 @@ export default function CheckInScreen() {
     setParticipants((prev) => prev.filter((p) => p !== name));
   }
 
+  async function fillCurrentCoords() {
+    try {
+      const coords = await getCurrentCoordinates();
+      setLatInput(coords.latitude.toFixed(5));
+      setLonInput(coords.longitude.toFixed(5));
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Couldn't get your location.");
+    }
+  }
+
+  function resetForm() {
+    setPurpose("");
+    setParticipants([]);
+    setDurationMinutes("");
+    setElapsedSeconds(0);
+    setLatInput("");
+    setLonInput("");
+  }
+
   async function handleSubmit() {
     const minutes = Number(durationMinutes);
     if (!minutes || minutes <= 0) {
@@ -107,33 +159,93 @@ export default function CheckInScreen() {
     setFormError(null);
     setSubmitting(true);
     try {
-      // Location is best-effort: if it isn't ready (permission denied, still
-      // resolving, or unavailable) the check-in still saves without coordinates.
-      const ready = location.status === "ready" ? location : null;
-      await insertCheckIn({
-        latitude: ready?.coords.latitude ?? null,
-        longitude: ready?.coords.longitude ?? null,
-        placeLabel: ready?.placeLabel ?? null,
-        temperatureC: ready?.weather?.temperatureC ?? null,
-        dewpointC: ready?.weather?.dewpointC ?? null,
-        weatherCondition: ready?.weather?.weatherCondition ?? null,
-        weatherCode: ready?.weather?.weatherCode ?? null,
-        durationMinutes: minutes,
-        activityType,
-        purpose: purpose.trim(),
-        participants,
-      });
-
-      setPurpose("");
-      setParticipants([]);
-      setDurationMinutes("");
-      setElapsedSeconds(0);
-      router.push("/");
+      if (mode === "past") {
+        await savePastCheckIn(minutes);
+      } else {
+        await saveNowCheckIn(minutes);
+      }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Couldn't save the check-in.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function saveNowCheckIn(minutes: number) {
+    // Location is best-effort: if it isn't ready (permission denied, still
+    // resolving, or unavailable) the check-in still saves without coordinates.
+    const ready = location.status === "ready" ? location : null;
+    await insertCheckIn({
+      latitude: ready?.coords.latitude ?? null,
+      longitude: ready?.coords.longitude ?? null,
+      placeLabel: ready?.placeLabel ?? null,
+      temperatureC: ready?.weather?.temperatureC ?? null,
+      dewpointC: ready?.weather?.dewpointC ?? null,
+      weatherCondition: ready?.weather?.weatherCondition ?? null,
+      weatherCode: ready?.weather?.weatherCode ?? null,
+      durationMinutes: minutes,
+      activityType,
+      purpose: purpose.trim(),
+      participants,
+    });
+    resetForm();
+    router.push("/");
+  }
+
+  async function savePastCheckIn(minutes: number) {
+    const when = parsePastDateTime(pastDate, pastTime);
+    if (!when) {
+      setFormError("Enter a valid date (YYYY-MM-DD) and time (HH:MM).");
+      return;
+    }
+    if (when.getTime() > Date.now()) {
+      setFormError("That date & time is in the future.");
+      return;
+    }
+
+    const lat = Number(latInput);
+    const lon = Number(lonInput);
+    const anyCoord = latInput.trim() !== "" || lonInput.trim() !== "";
+    const validCoords =
+      Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+    if (anyCoord && !validCoords) {
+      setFormError("Enter valid coordinates (latitude −90..90, longitude −180..180), or leave both blank.");
+      return;
+    }
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    let placeLabel: string | null = null;
+    let weather: WeatherSnapshot | null = null;
+
+    if (anyCoord && validCoords) {
+      latitude = lat;
+      longitude = lon;
+      // Look up the historical weather for that date/time & place.
+      [placeLabel, weather] = await Promise.all([
+        reverseGeocode({ latitude, longitude }),
+        fetchWeatherAt(latitude, longitude, when).catch(() => null),
+      ]);
+    }
+
+    await insertCheckIn(
+      {
+        latitude,
+        longitude,
+        placeLabel,
+        temperatureC: weather?.temperatureC ?? null,
+        dewpointC: weather?.dewpointC ?? null,
+        weatherCondition: weather?.weatherCondition ?? null,
+        weatherCode: weather?.weatherCode ?? null,
+        durationMinutes: minutes,
+        activityType,
+        purpose: purpose.trim(),
+        participants,
+      },
+      when.toISOString()
+    );
+    resetForm();
+    router.push("/");
   }
 
   return (
@@ -142,9 +254,66 @@ export default function CheckInScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>New check-in</Text>
 
-          <Section title="Location & conditions">
-            <LocationCard state={location} onRetry={loadLocation} />
-          </Section>
+          <View style={styles.modeRow}>
+            <ModeButton label="Now" active={mode === "now"} onPress={() => setMode("now")} />
+            <ModeButton label="In the past" active={mode === "past"} onPress={() => setMode("past")} />
+          </View>
+
+          {mode === "now" ? (
+            <Section title="Location & conditions">
+              <LocationCard state={location} onRetry={loadLocation} />
+            </Section>
+          ) : (
+            <>
+              <Section title="Date & time">
+                <View style={styles.durationRow}>
+                  <TextInput
+                    style={[styles.input, styles.durationInput]}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={theme.color.textMuted}
+                    value={pastDate}
+                    onChangeText={setPastDate}
+                    autoCapitalize="none"
+                  />
+                  <TextInput
+                    style={[styles.input, { width: 96 }]}
+                    placeholder="HH:MM"
+                    placeholderTextColor={theme.color.textMuted}
+                    value={pastTime}
+                    onChangeText={setPastTime}
+                    autoCapitalize="none"
+                  />
+                </View>
+              </Section>
+
+              <Section title="Coordinates">
+                <View style={styles.durationRow}>
+                  <TextInput
+                    style={[styles.input, styles.durationInput]}
+                    placeholder="Latitude"
+                    placeholderTextColor={theme.color.textMuted}
+                    keyboardType="numbers-and-punctuation"
+                    value={latInput}
+                    onChangeText={setLatInput}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.durationInput]}
+                    placeholder="Longitude"
+                    placeholderTextColor={theme.color.textMuted}
+                    keyboardType="numbers-and-punctuation"
+                    value={lonInput}
+                    onChangeText={setLonInput}
+                  />
+                </View>
+                <Pressable onPress={fillCurrentCoords} style={styles.retryButton}>
+                  <Text style={styles.retryLabel}>Use my current location</Text>
+                </Pressable>
+                <Text style={styles.locationHint}>
+                  Temperature, weather & dewpoint are looked up for this date & place when you save.
+                </Text>
+              </Section>
+            </>
+          )}
 
           <Section title="Activity">
             <View style={styles.chipWrap}>
@@ -251,6 +420,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function ModeButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable style={[styles.modeButton, active && styles.modeButtonActive]} onPress={onPress}>
+      <Text style={[styles.modeButtonLabel, active && styles.modeButtonLabelActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function LocationCard({ state, onRetry }: { state: LocationState; onRetry: () => void }) {
   if (state.status === "loading") {
     return (
@@ -320,6 +497,32 @@ const styles = StyleSheet.create({
     fontSize: theme.font.hero,
     fontWeight: "800",
     marginBottom: theme.spacing(4),
+  },
+  modeRow: {
+    flexDirection: "row",
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(5),
+  },
+  modeButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: theme.spacing(3),
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surface,
+  },
+  modeButtonActive: {
+    backgroundColor: theme.color.accent + "26",
+    borderColor: theme.color.accent,
+  },
+  modeButtonLabel: {
+    color: theme.color.textSecondary,
+    fontSize: theme.font.body,
+    fontWeight: "700",
+  },
+  modeButtonLabelActive: {
+    color: theme.color.accent,
   },
   section: {
     marginBottom: theme.spacing(5),

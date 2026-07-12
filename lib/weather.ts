@@ -85,6 +85,92 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
   }
 }
 
+function localDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, "0");
+  const d = `${date.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+interface HourlyResponse {
+  hourly?: {
+    time?: string[];
+    temperature_2m?: (number | null)[];
+    dew_point_2m?: (number | null)[];
+    relative_humidity_2m?: (number | null)[];
+    weather_code?: (number | null)[];
+  };
+}
+
+// Pick the hour closest to `when` from an Open-Meteo hourly response.
+function snapshotFromHourly(data: HourlyResponse, when: Date): WeatherSnapshot | null {
+  const hourly = data.hourly;
+  if (!hourly?.time?.length) return null;
+  const target = `${localDateKey(when)}T${`${when.getHours()}`.padStart(2, "0")}:00`;
+
+  let index = hourly.time.indexOf(target);
+  if (index === -1) {
+    // Fall back to the numerically nearest timestamp.
+    const targetMs = when.getTime();
+    let best = Infinity;
+    hourly.time.forEach((t, i) => {
+      const diff = Math.abs(new Date(t).getTime() - targetMs);
+      if (diff < best) {
+        best = diff;
+        index = i;
+      }
+    });
+  }
+  if (index === -1) return null;
+
+  const temperatureC = hourly.temperature_2m?.[index];
+  const weatherCode = hourly.weather_code?.[index];
+  if (typeof temperatureC !== "number" || typeof weatherCode !== "number") return null;
+
+  const dp = hourly.dew_point_2m?.[index];
+  const dewpointC =
+    typeof dp === "number"
+      ? dp
+      : estimateDewpointC(temperatureC, hourly.relative_humidity_2m?.[index] ?? 50);
+
+  return { temperatureC, dewpointC, weatherCode, weatherCondition: weatherLabel(weatherCode) };
+}
+
+async function fetchHourly(url: string): Promise<HourlyResponse | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return null;
+    return (await response.json()) as HourlyResponse;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Historical weather for a past date/time & location. Open-Meteo's archive API
+// covers older dates; very recent days (not yet archived) are served by the
+// forecast API's date range, so we try the archive first and fall back.
+export async function fetchWeatherAt(
+  latitude: number,
+  longitude: number,
+  when: Date
+): Promise<WeatherSnapshot | null> {
+  const day = localDateKey(when);
+  const hourlyVars = "temperature_2m,dew_point_2m,relative_humidity_2m,weather_code";
+
+  const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${day}&end_date=${day}&hourly=${hourlyVars}&timezone=auto`;
+  const archive = await fetchHourly(archiveUrl);
+  const fromArchive = archive && snapshotFromHourly(archive, when);
+  if (fromArchive) return fromArchive;
+
+  const forecastUrl = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&start_date=${day}&end_date=${day}&hourly=${hourlyVars}&timezone=auto`;
+  const forecast = await fetchHourly(forecastUrl);
+  return forecast ? snapshotFromHourly(forecast, when) : null;
+}
+
 export function celsiusToFahrenheit(celsius: number): number {
   return (celsius * 9) / 5 + 32;
 }
