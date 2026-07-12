@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Check In",
+    "slug": "t4000",
+    "version": "1.0.0",
+    "scheme": "checkin",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.t4000.checkin",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Check-ins use your location to record where an activity happened and to look up local weather."
+      }
+    },
+    "android": {
+      "package": "com.t4000.checkin",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0B0F",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "Check In",
+      "shortName": "Check In",
+      "themeColor": "#0B0B0F",
+      "backgroundColor": "#0B0B0F",
+      "display": "standalone"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Check-ins use your location to record where an activity happened and to look up local weather."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
