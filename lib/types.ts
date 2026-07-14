@@ -5,11 +5,10 @@ export const ACTIVITY_TYPES = [
   "Landlord",
   "Meeting",
   "Other",
-  "Renter",
   "Seller",
   "Social",
   "Sphere",
-  "Subway",
+  "Travel",
 ] as const;
 
 // Interaction quality: a 5-step scale from 1 (worst) to 5 (best), 3 = neutral.

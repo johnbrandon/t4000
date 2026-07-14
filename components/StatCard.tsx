@@ -31,14 +31,17 @@ const styles = StyleSheet.create({
   },
   value: {
     color: theme.color.textPrimary,
+    fontFamily: theme.font.display,
     fontSize: theme.font.title,
     fontWeight: "800",
   },
   label: {
     color: theme.color.textSecondary,
+    fontFamily: theme.font.display,
     fontSize: theme.font.caption,
+    fontWeight: "700",
     marginTop: 4,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
 });

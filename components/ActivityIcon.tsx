@@ -12,11 +12,10 @@ const ICONS: Record<ActivityType, IconName> = {
   Landlord: "office-building",
   Meeting: "account-group",
   Other: "dots-horizontal",
-  Renter: "key-variant",
   Seller: "tag",
   Social: "account-multiple",
   Sphere: "share-variant",
-  Subway: "subway-variant",
+  Travel: "train-variant",
 };
 
 export function activityIconName(activity: ActivityType): IconName {

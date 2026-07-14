@@ -3,6 +3,7 @@ import type { CheckIn } from "./types";
 export interface DaySummary {
   date: string; // YYYY-MM-DD (local)
   count: number;
+  interactionCount: number; // check-ins tagged Buyer or Seller (drives the grid)
   totalMinutes: number;
   dominantActivity: string;
   avgTempC: number | null; // average recorded temperature that day, if any
@@ -35,9 +36,14 @@ export function summarizeByDay(checkIns: CheckIn[], year: number): Map<string, D
     let totalMinutes = 0;
     let tempSum = 0;
     let tempCount = 0;
+    let interactionCount = 0;
     for (const entry of entries) {
       for (const activity of entry.activityTypes) {
         counts.set(activity, (counts.get(activity) ?? 0) + 1);
+      }
+      // The grid only logs a day's "interactions" for buyer/seller check-ins.
+      if (entry.activityTypes.includes("Buyer") || entry.activityTypes.includes("Seller")) {
+        interactionCount += 1;
       }
       totalMinutes += entry.durationMinutes;
       if (typeof entry.temperatureC === "number") {
@@ -49,6 +55,7 @@ export function summarizeByDay(checkIns: CheckIn[], year: number): Map<string, D
     summaries.set(date, {
       date,
       count: entries.length,
+      interactionCount,
       totalMinutes,
       dominantActivity,
       avgTempC: tempCount > 0 ? tempSum / tempCount : null,

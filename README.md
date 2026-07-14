@@ -4,7 +4,10 @@ A React Native + Expo progressive web app for time-tracking via location
 check-ins, inspired by **Foursquare** (place check-ins), **Strava** (activity
 feed) and **Whoop** (personal metrics). Each check-in is stored locally and
 rolls up into a year-at-a-glance calendar — one square per day, shaded like a
-GitHub contribution graph by how many interactions you logged that day.
+GitHub contribution graph by how many buyer/seller interactions you logged that
+day. The whole app is styled after the classic 1950s **Blue Note** jazz LP
+covers: warm paper stock, deep ink, cobalt blue and vermillion spot color, and
+bold geometric type set large and uppercase.
 
 ## What a check-in captures
 
@@ -25,11 +28,12 @@ GitHub contribution graph by how many interactions you logged that day.
   is resolved live and historical temperature/weather/dewpoint are looked up from
   Open-Meteo's archive. Location is best-effort: a check-in still saves without it.
   **Choose one or more** interaction tags (Biz dev, Buyer, Coffee, Landlord,
-  Meeting, Other, Renter, Seller, Social, Sphere, Subway) and rate the
+  Meeting, Other, Seller, Social, Sphere, Travel) and rate the
   **interaction quality** on a 1…5 scale. Length of activity is optional.
 - **This Year** — a 12-month × 31-day calendar (months across, days down) where
-  each square is shaded like a GitHub contribution graph: the more interactions
-  you logged that day, the darker the shade of green. Below it, a stack of tiles:
+  each square is shaded like a GitHub contribution graph: the more **buyer &
+  seller** interactions you logged that day, the darker the shade of green.
+  Below it, a stack of tiles:
   interaction quality (diverging around a neutral 0 line), average temperature,
   rainfall, the daily 10-year Treasury yield (FRED), and Buyer/Seller appointment
   counts — each its own chart. Tap a day to inspect its check-ins.
@@ -42,7 +46,8 @@ GitHub contribution graph by how many interactions you logged that day.
 ## Tech
 
 - **Expo SDK 57** with **expo-router** (file-based routing under `app/`)
-- Light color scheme with **Material Design icons** (`@expo/vector-icons`
+- **Blue Note**–inspired color scheme (cream stock, cobalt & vermillion) with
+  bold geometric display type, and **Material Design icons** (`@expo/vector-icons`
   MaterialCommunityIcons)
 - **expo-sqlite** for persistence — native on iOS/Android, `wa-sqlite` (WASM +
   OPFS) on web, so data survives reloads without a server

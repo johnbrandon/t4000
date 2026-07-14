@@ -116,8 +116,9 @@ export default function YearScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>This Year</Text>
         <Text style={styles.subtitle}>
-          Every square is a day of {year} (months across, days down). The more interactions you log
-          that day, the darker the shade of green — in the style of GitHub contributions.
+          Every square is a day of {year} (months across, days down). The more buyer & seller
+          interactions you log that day, the darker the shade of green — in the style of GitHub
+          contributions.
         </Text>
 
         {years.length > 1 ? (
@@ -232,8 +233,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.color.textPrimary,
+    fontFamily: theme.font.display,
     fontSize: theme.font.hero,
     fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
   },
   subtitle: {
     color: theme.color.textSecondary,

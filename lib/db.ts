@@ -113,10 +113,12 @@ async function migrate(db: SQLite.SQLiteDatabase) {
     await db.execAsync("UPDATE check_ins SET quality = MIN(5, MAX(1, quality + 3))");
   }
 
-  // Rename activities in stored data to match the current list.
+  // Rename activities in stored data to match the current list. "Renter" was
+  // retired, so fold any stored Renter check-ins into "Other".
   const renames: [string, string][] = [
     ["Showing", "Meeting"],
-    ["Travel", "Subway"],
+    ["Subway", "Travel"],
+    ["Renter", "Other"],
   ];
   for (const [oldName, newName] of renames) {
     const hit = await db.getFirstAsync("SELECT 1 FROM check_ins WHERE activity_types LIKE ? LIMIT 1", [`%"${oldName}"%`]);

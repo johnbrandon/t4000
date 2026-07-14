@@ -103,8 +103,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.color.textPrimary,
+    fontFamily: theme.font.display,
     fontSize: theme.font.subtitle,
-    fontWeight: "700",
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   subtitle: {
     color: theme.color.textSecondary,

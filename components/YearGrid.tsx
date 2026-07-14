@@ -71,11 +71,11 @@ const YearGrid = memo(function YearGrid({
                   const isSelected = key === selectedDate;
                   const isFuture = key > todayKey;
 
-                  // GitHub-contributions style: color by number of interactions
-                  // logged that day — more interactions, darker green.
+                  // GitHub-contributions style: color by number of buyer/seller
+                  // interactions logged that day — more interactions, darker green.
                   const backgroundColor = isFuture
                     ? "transparent"
-                    : contributionColor(summary?.count ?? 0);
+                    : contributionColor(summary?.interactionCount ?? 0);
 
                   const cellStyle = [
                     dims,

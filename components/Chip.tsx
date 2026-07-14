@@ -39,7 +39,10 @@ const styles = StyleSheet.create({
   },
   label: {
     color: theme.color.textSecondary,
+    fontFamily: theme.font.display,
     fontSize: theme.font.caption,
-    fontWeight: "600",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
 });

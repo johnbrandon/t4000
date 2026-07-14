@@ -67,7 +67,6 @@ export default function FeedScreen() {
             </View>
             {checkIns.length > 1 ? (
               <View style={styles.sortRow}>
-                <Text style={styles.sortLabel}>Sort</Text>
                 {(Object.keys(SORTS) as SortKey[]).map((key) => (
                   <Chip
                     key={key}
@@ -121,8 +120,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.color.textPrimary,
+    fontFamily: theme.font.display,
     fontSize: theme.font.hero,
     fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
   },
   newButton: {
     width: 40,
@@ -142,15 +144,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexWrap: "wrap",
     marginBottom: theme.spacing(3),
-  },
-  sortLabel: {
-    color: theme.color.textMuted,
-    fontSize: theme.font.caption,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginRight: theme.spacing(2),
-    marginBottom: theme.spacing(2),
   },
   footer: {
     marginVertical: theme.spacing(4),

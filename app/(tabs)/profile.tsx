@@ -142,8 +142,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.color.textPrimary,
+    fontFamily: theme.font.display,
     fontSize: theme.font.hero,
     fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
     marginBottom: theme.spacing(4),
   },
   statsRow: {
@@ -155,11 +158,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(5),
   },
   sectionTitle: {
-    color: theme.color.textSecondary,
+    color: theme.color.accent,
+    fontFamily: theme.font.display,
     fontSize: theme.font.caption,
     fontWeight: "700",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
     marginBottom: theme.spacing(2),
   },
   row: {
