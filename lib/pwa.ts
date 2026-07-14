@@ -12,7 +12,6 @@ const withBase = (path: string) => `${BASE}${path}`;
 export function registerPwa() {
   if (Platform.OS !== "web" || typeof document === "undefined") return;
 
-  injectBaseFont();
   addHeadTag("link", { rel: "manifest", href: withBase("/manifest.json") });
   addHeadTag("link", { rel: "apple-touch-icon", href: withBase("/icon-512.png") });
   addHeadTag("meta", { name: "apple-mobile-web-app-capable", content: "yes" });
@@ -24,18 +23,6 @@ export function registerPwa() {
       navigator.serviceWorker.register(withBase("/sw.js")).catch(() => {});
     });
   }
-}
-
-// Set the app-wide base typeface (a neutral Helvetica grotesque). Text that
-// doesn't declare its own fontFamily inherits this from the document root;
-// icon glyphs set their own font-family, so they're untouched.
-function injectBaseFont() {
-  if (document.getElementById("app-base-font")) return;
-  const style = document.createElement("style");
-  style.id = "app-base-font";
-  style.textContent =
-    'html,body,#root{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}';
-  document.head.appendChild(style);
 }
 
 function addHeadTag(tag: "link" | "meta", attrs: Record<string, string>) {

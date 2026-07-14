@@ -85,10 +85,6 @@ export default function CheckInScreen() {
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
 
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const loadLocation = async () => {
     setLocation({ status: "loading" });
     try {
@@ -173,28 +169,6 @@ export default function CheckInScreen() {
     };
   }, [latInput, lonInput, mode]);
 
-  useEffect(() => {
-    if (timerRunning) {
-      intervalRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [timerRunning]);
-
-  function toggleTimer() {
-    if (timerRunning) {
-      setTimerRunning(false);
-      setDurationMinutes(String(Math.max(1, Math.round(elapsedSeconds / 60))));
-    } else {
-      setElapsedSeconds(0);
-      setTimerRunning(true);
-    }
-  }
-
   function addParticipant() {
     const name = participantInput.trim();
     if (!name) return;
@@ -220,7 +194,6 @@ export default function CheckInScreen() {
     setPurpose("");
     setParticipants([]);
     setDurationMinutes("");
-    setElapsedSeconds(0);
     setLatInput("");
     setLonInput("");
   }
@@ -487,26 +460,14 @@ export default function CheckInScreen() {
           </Section>
 
           <Section title="Length of activity">
-            <View style={styles.durationRow}>
-              <TextInput
-                style={[styles.input, styles.durationInput]}
-                placeholder="Minutes"
-                placeholderTextColor={theme.color.textMuted}
-                keyboardType="number-pad"
-                value={durationMinutes}
-                editable={!timerRunning}
-                onChangeText={setDurationMinutes}
-              />
-              <Pressable
-                style={[styles.timerButton, timerRunning && styles.timerButtonActive]}
-                onPress={toggleTimer}
-              >
-                <MaterialCommunityIcons name={timerRunning ? "stop" : "play"} size={18} color={theme.color.background} />
-                <Text style={styles.timerButtonLabel}>
-                  {timerRunning ? formatClock(elapsedSeconds) : "Start timer"}
-                </Text>
-              </Pressable>
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Minutes"
+              placeholderTextColor={theme.color.textMuted}
+              keyboardType="number-pad"
+              value={durationMinutes}
+              onChangeText={setDurationMinutes}
+            />
           </Section>
 
           <Section title="Others participating">
@@ -632,14 +593,6 @@ function LocationCard({ state, onRetry }: { state: LocationState; onRetry: () =>
   );
 }
 
-function formatClock(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -736,23 +689,6 @@ const styles = StyleSheet.create({
   },
   durationInput: {
     flex: 1,
-  },
-  timerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: theme.color.accent,
-    paddingHorizontal: theme.spacing(4),
-    paddingVertical: theme.spacing(3),
-    borderRadius: theme.radius.sm,
-  },
-  timerButtonActive: {
-    backgroundColor: theme.color.accentAlt,
-  },
-  timerButtonLabel: {
-    color: theme.color.background,
-    fontWeight: "700",
-    fontSize: theme.font.caption,
   },
   addButton: {
     width: 44,

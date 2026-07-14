@@ -115,11 +115,6 @@ export default function YearScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>This Year</Text>
-        <Text style={styles.subtitle}>
-          Every square is a day of {year} (months across, days down). The more buyer & seller
-          interactions you log that day, the darker the shade of green — in the style of GitHub
-          contributions.
-        </Text>
 
         {years.length > 1 ? (
           <View style={styles.yearRow}>
@@ -236,11 +231,6 @@ const styles = StyleSheet.create({
     fontSize: theme.font.hero,
     fontWeight: "600",
     letterSpacing: -0.2,
-  },
-  subtitle: {
-    color: theme.color.textSecondary,
-    fontSize: theme.font.body,
-    marginTop: theme.spacing(1),
     marginBottom: theme.spacing(4),
   },
   yearRow: {

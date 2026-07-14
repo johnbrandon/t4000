@@ -6,17 +6,17 @@ feed) and **Whoop** (personal metrics). Each check-in is stored locally and
 rolls up into a year-at-a-glance calendar — one square per day, shaded like a
 GitHub contribution graph by how many buyer/seller interactions you logged that
 day. The whole app follows a **Vitsœ / Dieter Rams** industrial-minimalist
-design language — "as little design as possible": a warm off-white paper
-ground, near-black ink, hairline rules, generous whitespace, quiet neutral
-grotesque type, and a single restrained functional accent (a muted Braun
-signal orange).
+design language — "as little design as possible": an austere, fully monochrome
+scheme on a plain white ground, with charcoal ink, neutral grays, hairline
+rules, generous whitespace, and the platform's own system font. No color —
+identity is carried by type, icons and position.
 
 ## What a check-in captures
 
 - Latitude & longitude (device geolocation, or entered manually for past check-ins)
 - Street address for those coordinates (keyless reverse geocoding via OpenStreetMap Nominatim)
 - Temperature, weather condition & dewpoint (Open-Meteo — current or historical, keyless)
-- Length of activity (manual entry or built-in stopwatch)
+- Length of activity (manual entry, in minutes)
 - Type of activity (Run, Ride, Strength, Work, Meal, …)
 - Purpose of the activity
 - Other participants
@@ -48,8 +48,8 @@ signal orange).
 ## Tech
 
 - **Expo SDK 57** with **expo-router** (file-based routing under `app/`)
-- **Vitsœ / Rams**–inspired minimalist color scheme (warm paper, near-black ink,
-  one muted signal accent) with quiet neutral grotesque type, and **Material
+- **Vitsœ / Rams**–inspired austere monochrome scheme (plain white ground,
+  charcoal ink, neutral grays, no color) in the system font, with **Material
   Design icons** (`@expo/vector-icons` MaterialCommunityIcons)
 - **expo-sqlite** for persistence — native on iOS/Android, `wa-sqlite` (WASM +
   OPFS) on web, so data survives reloads without a server
