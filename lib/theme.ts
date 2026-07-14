@@ -43,18 +43,19 @@ export function activityColor(_activity?: string): string {
   return theme.color.accent;
 }
 
-// A single neutral gray sequential ramp for the contribution grid: 0
-// interactions -> 4+. Level 0 is the empty panel; the steps darken to charcoal.
-export const CONTRIBUTION_LEVELS = ["#ECECEC", "#C8C8C8", "#9A9A9A", "#5E5E5E", "#282828"];
+// The contribution grid is the one intentional splash of color in the otherwise
+// monochrome scheme: a GitHub-style green ramp, 0 interactions -> 4+. Level 0
+// stays a neutral empty panel so unlogged days recede into the grayscale UI.
+export const CONTRIBUTION_LEVELS = ["#ECECEC", "#9BE9A8", "#40C463", "#30A14E", "#216E39"];
 
 export function contributionColor(count: number): string {
   const level = count <= 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count === 3 ? 3 : 4;
   return CONTRIBUTION_LEVELS[level];
 }
 
-// Temperature gradient — monochrome: cool days read light, warm days read dark.
-// A single neutral gray ramp (no hue) keeps the whole scheme colorless. The
-// domain is usually derived from the actual data (see YearScreen); these
+// Temperature gradient: cold (blue) -> hot (red), through green. This keeps its
+// color even in the otherwise monochrome scheme so the heatmap stays legible.
+// The domain is usually derived from the actual data (see YearScreen); these
 // constants are only the fallback when there isn't enough data.
 export const TEMP_MIN_C = ((0 - 32) * 5) / 9; // 0°F ≈ -17.8°C
 export const TEMP_MAX_C = ((100 - 32) * 5) / 9; // 100°F ≈ 37.8°C
@@ -63,7 +64,6 @@ export function tempToColor(celsius: number, minC = TEMP_MIN_C, maxC = TEMP_MAX_
   const span = maxC - minC || 1;
   const clamped = Math.max(minC, Math.min(maxC, celsius));
   const t = (clamped - minC) / span;
-  // Light gray (cold) -> charcoal (hot).
-  const light = Math.round(82 - 62 * t);
-  return `hsl(0, 0%, ${light}%)`;
+  const hue = 240 * (1 - t);
+  return `hsl(${Math.round(hue)}, 60%, 52%)`;
 }

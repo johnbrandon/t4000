@@ -6,10 +6,11 @@ feed) and **Whoop** (personal metrics). Each check-in is stored locally and
 rolls up into a year-at-a-glance calendar — one square per day, shaded like a
 GitHub contribution graph by how many buyer/seller interactions you logged that
 day. The whole app follows a **Vitsœ / Dieter Rams** industrial-minimalist
-design language — "as little design as possible": an austere, fully monochrome
-scheme on a plain white ground, with charcoal ink, neutral grays, hairline
-rules, generous whitespace, and the platform's own system font. No color —
-identity is carried by type, icons and position.
+design language — "as little design as possible": an austere monochrome scheme
+on a plain white ground, with charcoal ink, neutral grays, hairline rules,
+generous whitespace, and the platform's own system font. Color is reserved for
+two deliberate places — the green contribution grid and the temperature
+heatmap — so it always means something.
 
 ## What a check-in captures
 
@@ -49,8 +50,9 @@ identity is carried by type, icons and position.
 
 - **Expo SDK 57** with **expo-router** (file-based routing under `app/`)
 - **Vitsœ / Rams**–inspired austere monochrome scheme (plain white ground,
-  charcoal ink, neutral grays, no color) in the system font, with **Material
-  Design icons** (`@expo/vector-icons` MaterialCommunityIcons)
+  charcoal ink, neutral grays; color reserved for the contribution grid and
+  temperature heatmap) in the system font, with **Material Design icons**
+  (`@expo/vector-icons` MaterialCommunityIcons)
 - **expo-sqlite** for persistence — native on iOS/Android, `wa-sqlite` (WASM +
   OPFS) on web, so data survives reloads without a server
 - **PWA**: web export runs as an installable, offline-capable single-page app

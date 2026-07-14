@@ -16,12 +16,13 @@ export const QUALITY_MIN = 1;
 export const QUALITY_MAX = 5;
 export const QUALITY_NEUTRAL = 3;
 
+// Ordered low → high so the check-in picker reads 1 to 5 left to right.
 export const QUALITY_LEVELS = [
-  { value: 5, label: "Great" },
-  { value: 4, label: "Good" },
-  { value: 3, label: "Neutral" },
-  { value: 2, label: "Poor" },
   { value: 1, label: "Bad" },
+  { value: 2, label: "Poor" },
+  { value: 3, label: "Neutral" },
+  { value: 4, label: "Good" },
+  { value: 5, label: "Great" },
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
