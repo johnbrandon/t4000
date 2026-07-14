@@ -233,11 +233,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.color.textPrimary,
-    fontFamily: theme.font.display,
     fontSize: theme.font.hero,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   subtitle: {
     color: theme.color.textSecondary,

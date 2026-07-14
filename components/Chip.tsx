@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: theme.spacing(3),
     paddingVertical: theme.spacing(1.5),
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     borderColor: theme.color.border,
     backgroundColor: theme.color.surface,
@@ -39,10 +39,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: theme.color.textSecondary,
-    fontFamily: theme.font.display,
     fontSize: theme.font.caption,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
+    fontWeight: "500",
   },
 });

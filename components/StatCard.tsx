@@ -31,17 +31,16 @@ const styles = StyleSheet.create({
   },
   value: {
     color: theme.color.textPrimary,
-    fontFamily: theme.font.display,
     fontSize: theme.font.title,
-    fontWeight: "800",
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   label: {
-    color: theme.color.textSecondary,
-    fontFamily: theme.font.display,
+    color: theme.color.textMuted,
     fontSize: theme.font.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 4,
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
 });

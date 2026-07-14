@@ -26,13 +26,13 @@ export function registerPwa() {
   }
 }
 
-// Set the app-wide base typeface (Blue Note's Helvetica grotesque). Text that
+// Set the app-wide base typeface (a neutral Helvetica grotesque). Text that
 // doesn't declare its own fontFamily inherits this from the document root;
 // icon glyphs set their own font-family, so they're untouched.
 function injectBaseFont() {
-  if (document.getElementById("bluenote-base-font")) return;
+  if (document.getElementById("app-base-font")) return;
   const style = document.createElement("style");
-  style.id = "bluenote-base-font";
+  style.id = "app-base-font";
   style.textContent =
     'html,body,#root{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}';
   document.head.appendChild(style);

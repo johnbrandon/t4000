@@ -5,9 +5,11 @@ check-ins, inspired by **Foursquare** (place check-ins), **Strava** (activity
 feed) and **Whoop** (personal metrics). Each check-in is stored locally and
 rolls up into a year-at-a-glance calendar — one square per day, shaded like a
 GitHub contribution graph by how many buyer/seller interactions you logged that
-day. The whole app is styled after the classic 1950s **Blue Note** jazz LP
-covers: warm paper stock, deep ink, cobalt blue and vermillion spot color, and
-bold geometric type set large and uppercase.
+day. The whole app follows a **Vitsœ / Dieter Rams** industrial-minimalist
+design language — "as little design as possible": a warm off-white paper
+ground, near-black ink, hairline rules, generous whitespace, quiet neutral
+grotesque type, and a single restrained functional accent (a muted Braun
+signal orange).
 
 ## What a check-in captures
 
@@ -46,9 +48,9 @@ bold geometric type set large and uppercase.
 ## Tech
 
 - **Expo SDK 57** with **expo-router** (file-based routing under `app/`)
-- **Blue Note**–inspired color scheme (cream stock, cobalt & vermillion) with
-  bold geometric display type, and **Material Design icons** (`@expo/vector-icons`
-  MaterialCommunityIcons)
+- **Vitsœ / Rams**–inspired minimalist color scheme (warm paper, near-black ink,
+  one muted signal accent) with quiet neutral grotesque type, and **Material
+  Design icons** (`@expo/vector-icons` MaterialCommunityIcons)
 - **expo-sqlite** for persistence — native on iOS/Android, `wa-sqlite` (WASM +
   OPFS) on web, so data survives reloads without a server
 - **PWA**: web export runs as an installable, offline-capable single-page app

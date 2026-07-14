@@ -651,11 +651,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.color.textPrimary,
-    fontFamily: theme.font.display,
     fontSize: theme.font.hero,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
+    fontWeight: "600",
+    letterSpacing: -0.2,
     marginBottom: theme.spacing(4),
   },
   modeRow: {
@@ -688,12 +686,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(5),
   },
   sectionTitle: {
-    color: theme.color.accent,
-    fontFamily: theme.font.display,
+    color: theme.color.textMuted,
     fontSize: theme.font.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     marginBottom: theme.spacing(2),
   },
   chipWrap: {
@@ -854,7 +851,7 @@ const styles = StyleSheet.create({
   submitLabel: {
     color: theme.color.background,
     fontSize: theme.font.subtitle,
-    fontWeight: "800",
+    fontWeight: "600",
   },
   deleteButton: {
     flexDirection: "row",

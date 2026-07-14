@@ -15,11 +15,9 @@ export default function TabsLayout() {
           borderTopWidth: 1,
         },
         tabBarLabelStyle: {
-          fontFamily: theme.font.display,
-          fontWeight: "700",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          fontSize: 10,
+          fontWeight: "500",
+          letterSpacing: 0.1,
+          fontSize: 11,
         },
       }}
     >
