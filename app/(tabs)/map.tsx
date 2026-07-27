@@ -3,13 +3,15 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView from "../../components/MapView";
+import { useThemePalette } from "../../lib/ThemeContext";
 import { useCheckIns } from "../../lib/hooks";
 import { checkInsToPoints } from "../../lib/mapPoints";
 import { theme } from "../../lib/theme";
 
 export default function MapScreen() {
   const { checkIns } = useCheckIns();
-  const points = useMemo(() => checkInsToPoints(checkIns), [checkIns]);
+  const palette = useThemePalette();
+  const points = useMemo(() => checkInsToPoints(checkIns, palette.accent), [checkIns, palette.accent]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

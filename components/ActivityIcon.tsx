@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
-import { activityColor, theme } from "../lib/theme";
+import { theme } from "../lib/theme";
 import type { ActivityType } from "../lib/types";
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -23,7 +23,6 @@ export function activityIconName(activity: ActivityType): IconName {
 }
 
 export default function ActivityIcon({ activity, size = 22 }: { activity: ActivityType; size?: number }) {
-  const color = activityColor(activity);
   return (
     <View
       style={[
@@ -32,11 +31,11 @@ export default function ActivityIcon({ activity, size = 22 }: { activity: Activi
           width: size * 1.9,
           height: size * 1.9,
           borderRadius: size,
-          backgroundColor: color + "26",
+          backgroundColor: theme.color.accentSoft,
         },
       ]}
     >
-      <MaterialCommunityIcons name={ICONS[activity] ?? "circle-medium"} size={size} color={color} />
+      <MaterialCommunityIcons name={ICONS[activity] ?? "circle-medium"} size={size} color={theme.color.accent} />
     </View>
   );
 }

@@ -48,8 +48,10 @@ export type NewCheckIn = Omit<CheckIn, "id" | "createdAt">;
 
 export interface Settings {
   temperatureUnit: "C" | "F";
+  themeName: "light" | "night";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   temperatureUnit: "F",
+  themeName: "light",
 };

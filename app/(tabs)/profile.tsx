@@ -5,15 +5,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ActivityIcon from "../../components/ActivityIcon";
 import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
+import { useThemeControls } from "../../lib/ThemeContext";
 import { useCheckIns, useSettings } from "../../lib/hooks";
-import { activityColor, theme } from "../../lib/theme";
+import { theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import type { ActivityType } from "../../lib/types";
 
-const PERSON_COLORS = ["#4C8DFF", "#3DDC97", "#C792EA", "#F5B942", "#FF8DC7", "#4CD3E0"];
-
 export default function ProfileScreen() {
   const { settings, update } = useSettings();
+  const { name: themeName, setThemeName } = useThemeControls();
   const { checkIns } = useCheckIns();
 
   const totals = useMemo(() => {
@@ -52,6 +52,13 @@ export default function ProfileScreen() {
           <StatCard label="Total time" value={formatDuration(totals.totalMinutes)} accent={theme.color.accentBlue} />
         </View>
 
+        <Section title="Appearance">
+          <View style={styles.chipWrap}>
+            <Chip label="Light" selected={themeName === "light"} onPress={() => setThemeName("light")} />
+            <Chip label="Night (red)" selected={themeName === "night"} onPress={() => setThemeName("night")} />
+          </View>
+        </Section>
+
         <Section title="Temperature unit">
           <View style={styles.chipWrap}>
             <Chip label="Fahrenheit" selected={settings.temperatureUnit === "F"} onPress={() => update("temperatureUnit", "F")} />
@@ -71,7 +78,7 @@ export default function ProfileScreen() {
                       styles.breakdownBarFill,
                       {
                         width: `${Math.max(4, (minutes / totals.top[0][1]) * 100)}%`,
-                        backgroundColor: activityColor(activity),
+                        backgroundColor: theme.color.accent,
                       },
                     ]}
                   />
@@ -84,28 +91,25 @@ export default function ProfileScreen() {
 
         {people.length > 0 ? (
           <Section title="Who you spend your time with">
-            {people.map(([name, minutes], i) => {
-              const color = PERSON_COLORS[i % PERSON_COLORS.length];
-              return (
-                <View key={name} style={styles.breakdownRow}>
-                  <View style={[styles.personBadge, { backgroundColor: color + "26", borderColor: color }]}>
-                    <MaterialCommunityIcons name="account" size={12} color={color} />
-                  </View>
-                  <Text style={styles.breakdownLabel} numberOfLines={1}>
-                    {abbreviateName(name)}
-                  </Text>
-                  <View style={styles.breakdownBarTrack}>
-                    <View
-                      style={[
-                        styles.breakdownBarFill,
-                        { width: `${Math.max(4, (minutes / (people[0][1] || 1)) * 100)}%`, backgroundColor: color },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.breakdownValue}>{formatDuration(minutes)}</Text>
+            {people.map(([name, minutes]) => (
+              <View key={name} style={styles.breakdownRow}>
+                <View style={styles.personBadge}>
+                  <MaterialCommunityIcons name="account" size={12} color={theme.color.accent} />
                 </View>
-              );
-            })}
+                <Text style={styles.breakdownLabel} numberOfLines={1}>
+                  {abbreviateName(name)}
+                </Text>
+                <View style={styles.breakdownBarTrack}>
+                  <View
+                    style={[
+                      styles.breakdownBarFill,
+                      { width: `${Math.max(4, (minutes / (people[0][1] || 1)) * 100)}%`, backgroundColor: theme.color.accent },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.breakdownValue}>{formatDuration(minutes)}</Text>
+              </View>
+            ))}
           </Section>
         ) : null}
       </ScrollView>
@@ -201,6 +205,8 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 1,
+    backgroundColor: theme.color.accentSoft,
+    borderColor: theme.color.accent,
     alignItems: "center",
     justifyContent: "center",
   },

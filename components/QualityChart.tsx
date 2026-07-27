@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 import { dateKey, daysInMonth, MONTH_INITIALS } from "../lib/dayGrid";
+import { useThemePalette } from "../lib/ThemeContext";
 import { theme } from "../lib/theme";
 import { QUALITY_MAX, QUALITY_MIN, QUALITY_NEUTRAL } from "../lib/types";
 
@@ -20,6 +21,7 @@ export default function QualityChart({
   year: number;
   qualityByDay: Map<string, number>;
 }) {
+  const palette = useThemePalette();
   const [width, setWidth] = useState(0);
 
   const days = useMemo(() => {
@@ -77,21 +79,21 @@ export default function QualityChart({
                     y={y}
                     width={barW}
                     height={barH}
-                    fill={diff > 0 ? theme.color.accent : theme.color.danger}
+                    fill={diff > 0 ? palette.accent : palette.danger}
                     rx={Math.min(1.5, barW / 2)}
                   />
                 );
               })}
             {/* neutral line */}
-            <Line x1={PAD_X} y1={zeroY} x2={width - PAD_X} y2={zeroY} stroke={theme.color.textMuted} strokeWidth={1} />
-            <SvgText x={PAD_X} y={plotTop + 2} fill={theme.color.accent} fontSize={9} fontFamily={CHART_FONT}>
+            <Line x1={PAD_X} y1={zeroY} x2={width - PAD_X} y2={zeroY} stroke={palette.textMuted} strokeWidth={1} />
+            <SvgText x={PAD_X} y={plotTop + 2} fill={palette.accent} fontSize={9} fontFamily={CHART_FONT}>
               {QUALITY_MAX}
             </SvgText>
-            <SvgText x={PAD_X} y={plotBottom} fill={theme.color.danger} fontSize={9} fontFamily={CHART_FONT}>
+            <SvgText x={PAD_X} y={plotBottom} fill={palette.danger} fontSize={9} fontFamily={CHART_FONT}>
               {QUALITY_MIN}
             </SvgText>
             {monthStarts.map((mo, i) => (
-              <SvgText key={i} x={xFor(mo.index)} y={H - 2} fill={theme.color.textMuted} fontSize={9} fontFamily={CHART_FONT} textAnchor="middle">
+              <SvgText key={i} x={xFor(mo.index)} y={H - 2} fill={palette.textMuted} fontSize={9} fontFamily={CHART_FONT} textAnchor="middle">
                 {mo.label}
               </SvgText>
             ))}

@@ -4,24 +4,21 @@ import { theme } from "../lib/theme";
 export default function Chip({
   label,
   selected = false,
-  color,
   onPress,
 }: {
   label: string;
   selected?: boolean;
-  color?: string;
   onPress?: () => void;
 }) {
-  const accent = color ?? theme.color.accent;
   return (
     <Pressable
       onPress={onPress}
       style={[
         styles.chip,
-        selected && { backgroundColor: accent + "26", borderColor: accent },
+        selected && { backgroundColor: theme.color.accentSoft, borderColor: theme.color.accent },
       ]}
     >
-      <Text style={[styles.label, selected && { color: accent }]}>{label}</Text>
+      <Text style={[styles.label, selected && { color: theme.color.accent }]}>{label}</Text>
     </Pressable>
   );
 }

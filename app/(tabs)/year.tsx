@@ -9,8 +9,9 @@ import QualityChart from "../../components/QualityChart";
 import YearGrid from "../../components/YearGrid";
 import YieldLineChart, { type YieldStatus } from "../../components/YieldLineChart";
 import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
+import { useThemePalette } from "../../lib/ThemeContext";
 import { useCheckIns, useSettings } from "../../lib/hooks";
-import { TEMP_MAX_C, TEMP_MIN_C, tempToColor, theme } from "../../lib/theme";
+import { TEMP_MAX_C, TEMP_MIN_C, theme } from "../../lib/theme";
 import { formatDuration } from "../../lib/time";
 import { fetchTreasuryYields } from "../../lib/treasury";
 import { fetchDailyWeather, formatTemperature } from "../../lib/weather";
@@ -23,6 +24,7 @@ const BACKFILL_LON = -73.97182;
 export default function YearScreen() {
   const { checkIns } = useCheckIns();
   const { settings } = useSettings();
+  const palette = useThemePalette();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -150,7 +152,7 @@ export default function YearScreen() {
           subtitle={`Daily average temperature at the default location, ${year}.`}
           domainMin={TEMP_MIN_C}
           domainMax={TEMP_MAX_C}
-          colorFor={(v) => tempToColor(v)}
+          colorFor={(v) => palette.tempColor(v)}
           formatTop={() => formatTemperature(TEMP_MAX_C, settings.temperatureUnit)}
           emptyNote="Temperature data unavailable right now."
         />
@@ -162,7 +164,7 @@ export default function YearScreen() {
           subtitle={`Total daily precipitation at the default location, ${year}.`}
           domainMin={0}
           domainMax={null}
-          colorFor={() => theme.color.accentBlue}
+          colorFor={() => palette.accentBlue}
           formatTop={(max) => `${Math.round(max)} mm`}
           emptyNote="Rainfall data unavailable right now."
         />

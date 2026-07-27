@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
+import { useThemePalette } from "../lib/ThemeContext";
 import type { MapPoint } from "../lib/mapPoints";
 import { theme } from "../lib/theme";
 
@@ -38,6 +39,7 @@ function loadLeaflet(): Promise<any> {
 export default function MapView({ points }: { points: MapPoint[] }) {
   const containerRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
+  const palette = useThemePalette();
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +65,7 @@ export default function MapView({ points }: { points: MapPoint[] }) {
         for (const p of points) {
           const marker = L.circleMarker([p.latitude, p.longitude], {
             radius: 7,
-            color: "#0B0B0F",
+            color: palette.border,
             weight: 1.5,
             fillColor: p.color,
             fillOpacity: 0.9,
@@ -83,7 +85,7 @@ export default function MapView({ points }: { points: MapPoint[] }) {
     return () => {
       cancelled = true;
     };
-  }, [points]);
+  }, [points, palette]);
 
   useEffect(
     () => () => {

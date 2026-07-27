@@ -1,17 +1,18 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { theme } from "../../lib/theme";
+import { useThemePalette } from "../../lib/ThemeContext";
 
 export default function TabsLayout() {
+  const palette = useThemePalette();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.color.accent,
-        tabBarInactiveTintColor: theme.color.textMuted,
+        tabBarActiveTintColor: palette.accent,
+        tabBarInactiveTintColor: palette.textMuted,
         tabBarStyle: {
-          backgroundColor: theme.color.surface,
-          borderTopColor: theme.color.border,
+          backgroundColor: palette.surface,
+          borderTopColor: palette.border,
           borderTopWidth: 1,
         },
         tabBarLabelStyle: {

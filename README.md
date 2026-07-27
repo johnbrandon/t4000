@@ -10,7 +10,8 @@ design language — "as little design as possible": an austere monochrome scheme
 on a plain white ground, with charcoal ink, neutral grays, hairline rules,
 generous whitespace, and the platform's own system font. Color is reserved for
 two deliberate places — the green contribution grid and the temperature
-heatmap — so it always means something.
+heatmap — so it always means something. A second, switchable **Night** scheme
+recasts everything as red on true black, Apple Watch night-mode style.
 
 ## What a check-in captures
 
@@ -40,18 +41,22 @@ heatmap — so it always means something.
   interaction quality (diverging around a neutral 0 line), average temperature,
   rainfall, the daily 10-year Treasury yield (FRED), and Buyer/Seller appointment
   counts — each its own chart. Tap a day to inspect its check-ins.
-- **Profile** — temperature unit, plus "where your time goes" (by activity) and
-  "who you spend your time with" (people tagged in check-ins, ranked by total
-  time spent together, names shown as first initial + last name).
+- **Profile** — appearance (Light / Night) and temperature unit, plus "where
+  your time goes" (by activity) and "who you spend your time with" (people
+  tagged in check-ins, ranked by total time spent together, names shown as
+  first initial + last name).
 - **Map** — an interactive map (Leaflet + OpenStreetMap on web) with a pin for
   every check-in that recorded coordinates, colored by activity.
 
 ## Tech
 
 - **Expo SDK 57** with **expo-router** (file-based routing under `app/`)
-- **Vitsœ / Rams**–inspired austere monochrome scheme (plain white ground,
-  charcoal ink, neutral grays; color reserved for the contribution grid and
-  temperature heatmap) in the system font, with **Material Design icons**
+- Two switchable color schemes (persisted, toggled on the Profile screen): a
+  **Vitsœ / Rams**–inspired austere monochrome **Light** scheme (plain white
+  ground, charcoal ink) and an Apple-Watch-style **Night** scheme (red on true
+  black). Flat colors are driven by CSS custom properties so the whole UI
+  re-themes instantly; SVG charts and the map read concrete palette values.
+  Set in the system font, with **Material Design icons**
   (`@expo/vector-icons` MaterialCommunityIcons)
 - **expo-sqlite** for persistence — native on iOS/Android, `wa-sqlite` (WASM +
   OPFS) on web, so data survives reloads without a server

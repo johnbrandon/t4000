@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 import { dateKey, daysInMonth, MONTH_INITIALS } from "../lib/dayGrid";
+import { useThemePalette } from "../lib/ThemeContext";
 import { theme } from "../lib/theme";
 
 const CHART_FONT = Platform.OS === "web" ? "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" : undefined;
@@ -33,6 +34,7 @@ export default function DailyBarChart({
   formatTop: (max: number) => string;
   emptyNote?: string;
 }) {
+  const palette = useThemePalette();
   const [width, setWidth] = useState(0);
 
   const days = useMemo(() => {
@@ -80,7 +82,7 @@ export default function DailyBarChart({
       <View onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)} style={{ height: H }}>
         {width > 0 ? (
           <Svg width={width} height={H}>
-            <Line x1={PAD_X} y1={plotBottom} x2={width - PAD_X} y2={plotBottom} stroke={theme.color.border} strokeWidth={1} />
+            <Line x1={PAD_X} y1={plotBottom} x2={width - PAD_X} y2={plotBottom} stroke={palette.border} strokeWidth={1} />
             {days
               .filter((d) => d.value != null && (d.value as number) > domainMin)
               .map((d) => {
@@ -99,12 +101,12 @@ export default function DailyBarChart({
                 );
               })}
             {hasData ? (
-              <SvgText x={PAD_X} y={PAD_TOP} fill={theme.color.textMuted} fontSize={9} fontFamily={CHART_FONT}>
+              <SvgText x={PAD_X} y={PAD_TOP} fill={palette.textMuted} fontSize={9} fontFamily={CHART_FONT}>
                 {formatTop(top)}
               </SvgText>
             ) : null}
             {monthStarts.map((mo, i) => (
-              <SvgText key={i} x={xFor(mo.index)} y={H - 4} fill={theme.color.textMuted} fontSize={9} fontFamily={CHART_FONT} textAnchor="middle">
+              <SvgText key={i} x={xFor(mo.index)} y={H - 4} fill={palette.textMuted} fontSize={9} fontFamily={CHART_FONT} textAnchor="middle">
                 {mo.label}
               </SvgText>
             ))}

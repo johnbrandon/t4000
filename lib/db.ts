@@ -284,6 +284,7 @@ export async function getSettings(): Promise<Settings> {
   const stored: Record<string, string> = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return {
     temperatureUnit: (stored.temperatureUnit as Settings["temperatureUnit"]) ?? DEFAULT_SETTINGS.temperatureUnit,
+    themeName: (stored.themeName as Settings["themeName"]) ?? DEFAULT_SETTINGS.themeName,
   };
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 import { dateKey, daysInMonth, MONTH_INITIALS } from "../lib/dayGrid";
+import { useThemePalette } from "../lib/ThemeContext";
 import { theme } from "../lib/theme";
 
 const CHART_FONT = Platform.OS === "web" ? "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" : undefined;
@@ -9,7 +10,6 @@ const H = 120;
 const PAD_X = 8;
 const PAD_TOP = 12;
 const PAD_BOTTOM = 20;
-const COLOR = theme.color.accentBlue;
 
 export default function AppointmentsChart({
   year,
@@ -18,6 +18,8 @@ export default function AppointmentsChart({
   year: number;
   appointmentsByDay: Map<string, number>;
 }) {
+  const palette = useThemePalette();
+  const COLOR = palette.accentBlue;
   const [width, setWidth] = useState(0);
 
   const days = useMemo(() => {
@@ -61,7 +63,7 @@ export default function AppointmentsChart({
       <View onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)} style={{ height: H }}>
         {width > 0 ? (
           <Svg width={width} height={H}>
-            <Line x1={PAD_X} y1={plotBottom} x2={width - PAD_X} y2={plotBottom} stroke={theme.color.border} strokeWidth={1} />
+            <Line x1={PAD_X} y1={plotBottom} x2={width - PAD_X} y2={plotBottom} stroke={palette.border} strokeWidth={1} />
             {days
               .filter((d) => d.count > 0)
               .map((d) => {
@@ -70,11 +72,11 @@ export default function AppointmentsChart({
                   <Rect key={d.key} x={xFor(d.index) - barW / 2} y={y} width={barW} height={plotBottom - y} fill={COLOR} rx={Math.min(2, barW / 2)} />
                 );
               })}
-            <SvgText x={PAD_X} y={PAD_TOP + 2} fill={theme.color.textMuted} fontSize={9} fontFamily={CHART_FONT}>
+            <SvgText x={PAD_X} y={PAD_TOP + 2} fill={palette.textMuted} fontSize={9} fontFamily={CHART_FONT}>
               {`${maxCount}`}
             </SvgText>
             {monthStarts.map((mo, i) => (
-              <SvgText key={i} x={xFor(mo.index)} y={H - 4} fill={theme.color.textMuted} fontSize={9} fontFamily={CHART_FONT} textAnchor="middle">
+              <SvgText key={i} x={xFor(mo.index)} y={H - 4} fill={palette.textMuted} fontSize={9} fontFamily={CHART_FONT} textAnchor="middle">
                 {mo.label}
               </SvgText>
             ))}

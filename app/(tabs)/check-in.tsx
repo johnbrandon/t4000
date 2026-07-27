@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
 import { deleteCheckIn, getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
-import { activityColor, theme } from "../../lib/theme";
+import { theme } from "../../lib/theme";
 import { ACTIVITY_TYPES, QUALITY_LEVELS, QUALITY_NEUTRAL, type ActivityType } from "../../lib/types";
 import { fetchWeather, fetchWeatherAt, formatTemperature, type WeatherSnapshot } from "../../lib/weather";
 
@@ -413,7 +413,6 @@ export default function CheckInScreen() {
                 <Chip
                   key={activity}
                   label={activity}
-                  color={activityColor(activity)}
                   selected={activityTypes.includes(activity)}
                   onPress={() => toggleActivity(activity)}
                 />
@@ -431,12 +430,18 @@ export default function CheckInScreen() {
                     : level.value < QUALITY_NEUTRAL
                     ? theme.color.danger
                     : theme.color.textMuted;
+                const soft =
+                  level.value > QUALITY_NEUTRAL
+                    ? theme.color.accentSoft
+                    : level.value < QUALITY_NEUTRAL
+                    ? theme.color.dangerSoft
+                    : theme.color.textMutedSoft;
                 return (
                   <Pressable
                     key={level.value}
                     style={[
                       styles.qualityButton,
-                      active && { backgroundColor: color + "26", borderColor: color },
+                      active && { backgroundColor: soft, borderColor: color },
                     ]}
                     onPress={() => setQuality(level.value)}
                   >
@@ -624,7 +629,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.surface,
   },
   modeButtonActive: {
-    backgroundColor: theme.color.accent + "26",
+    backgroundColor: theme.color.accentSoft,
     borderColor: theme.color.accent,
   },
   modeButtonLabel: {
@@ -765,9 +770,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: theme.color.danger + "1A",
+    backgroundColor: theme.color.dangerSoft,
     borderWidth: 1,
-    borderColor: theme.color.danger + "55",
+    borderColor: theme.color.dangerLine,
     borderRadius: theme.radius.sm,
     padding: theme.spacing(3),
     marginTop: theme.spacing(2),
@@ -797,11 +802,11 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing(3),
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.color.danger + "55",
+    borderColor: theme.color.dangerLine,
     marginTop: theme.spacing(3),
   },
   deleteButtonConfirm: {
-    backgroundColor: theme.color.danger + "1A",
+    backgroundColor: theme.color.dangerSoft,
     borderColor: theme.color.danger,
   },
   deleteLabel: {
