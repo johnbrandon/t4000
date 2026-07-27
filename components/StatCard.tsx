@@ -32,13 +32,15 @@ const styles = StyleSheet.create({
   value: {
     color: theme.color.textPrimary,
     fontSize: theme.font.title,
-    fontWeight: "800",
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   label: {
-    color: theme.color.textSecondary,
+    color: theme.color.textMuted,
     fontSize: theme.font.caption,
+    fontWeight: "600",
     marginTop: 4,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
 });

@@ -1,31 +1,28 @@
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
-import { activityColor, theme } from "../lib/theme";
+import { theme } from "../lib/theme";
 import type { ActivityType } from "../lib/types";
 
-const ICONS: Record<ActivityType, keyof typeof Ionicons.glyphMap> = {
-  Run: "walk",
-  Walk: "footsteps",
-  Ride: "bicycle",
-  Strength: "barbell",
-  Yoga: "body",
-  Swim: "water",
-  Hike: "trail-sign",
-  Work: "briefcase",
-  Meeting: "people",
-  Meal: "restaurant",
-  Social: "happy",
-  Travel: "airplane",
-  Rest: "bed",
-  Other: "ellipse",
+type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+const ICONS: Record<ActivityType, IconName> = {
+  "Biz dev": "laptop",
+  Buyer: "cart",
+  Coffee: "coffee",
+  Landlord: "office-building",
+  Meeting: "account-group",
+  Other: "dots-horizontal",
+  Seller: "tag",
+  Social: "account-multiple",
+  Sphere: "share-variant",
+  Travel: "train-variant",
 };
 
-export function activityIconName(activity: ActivityType): keyof typeof Ionicons.glyphMap {
-  return ICONS[activity] ?? "ellipse";
+export function activityIconName(activity: ActivityType): IconName {
+  return ICONS[activity] ?? "circle-medium";
 }
 
 export default function ActivityIcon({ activity, size = 22 }: { activity: ActivityType; size?: number }) {
-  const color = activityColor(activity);
   return (
     <View
       style={[
@@ -34,11 +31,11 @@ export default function ActivityIcon({ activity, size = 22 }: { activity: Activi
           width: size * 1.9,
           height: size * 1.9,
           borderRadius: size,
-          backgroundColor: color + "26",
+          backgroundColor: theme.color.accentSoft,
         },
       ]}
     >
-      <Ionicons name={ICONS[activity] ?? "ellipse"} size={size} color={color} />
+      <MaterialCommunityIcons name={ICONS[activity] ?? "circle-medium"} size={size} color={theme.color.accent} />
     </View>
   );
 }

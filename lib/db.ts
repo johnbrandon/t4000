@@ -13,12 +13,14 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
       if (Platform.OS !== "web") {
         await db.execAsync("PRAGMA journal_mode = WAL;");
       }
+      // latitude/longitude are nullable so a check-in can still be saved when
+      // the device location is unavailable or the user declines the prompt.
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS check_ins (
           id TEXT PRIMARY KEY NOT NULL,
           created_at TEXT NOT NULL,
-          latitude REAL NOT NULL,
-          longitude REAL NOT NULL,
+          latitude REAL,
+          longitude REAL,
           place_label TEXT,
           temperature_c REAL,
           dewpoint_c REAL,
@@ -26,6 +28,8 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
           weather_code INTEGER,
           duration_minutes INTEGER NOT NULL,
           activity_type TEXT NOT NULL,
+          activity_types TEXT,
+          quality INTEGER NOT NULL DEFAULT 0,
           purpose TEXT NOT NULL,
           participants TEXT NOT NULL DEFAULT '[]'
         );
@@ -36,10 +40,93 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
           value TEXT NOT NULL
         );
       `);
+      await migrate(db);
       return db;
     });
   }
   return dbPromise;
+}
+
+// Schema migrations, driven by the actual columns present so they run once and
+// are safe on any prior version:
+//   1. Early builds had NOT NULL latitude/longitude — rebuild to nullable.
+//   2. Add activity_types (JSON) for multi-activity check-ins; backfill from
+//      the single activity_type.
+async function migrate(db: SQLite.SQLiteDatabase) {
+  let info = await db.getAllAsync<{ name: string; notnull: number }>("PRAGMA table_info(check_ins)");
+  const latCol = info.find((c) => c.name === "latitude");
+
+  if (latCol && latCol.notnull === 1) {
+    await db.execAsync(`
+      BEGIN TRANSACTION;
+      CREATE TABLE check_ins_new (
+        id TEXT PRIMARY KEY NOT NULL,
+        created_at TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        place_label TEXT,
+        temperature_c REAL,
+        dewpoint_c REAL,
+        weather_condition TEXT,
+        weather_code INTEGER,
+        duration_minutes INTEGER NOT NULL,
+        activity_type TEXT NOT NULL,
+        activity_types TEXT,
+        purpose TEXT NOT NULL,
+        participants TEXT NOT NULL DEFAULT '[]'
+      );
+      INSERT INTO check_ins_new
+        (id, created_at, latitude, longitude, place_label, temperature_c, dewpoint_c,
+         weather_condition, weather_code, duration_minutes, activity_type, activity_types, purpose, participants)
+      SELECT id, created_at, latitude, longitude, place_label, temperature_c, dewpoint_c,
+         weather_condition, weather_code, duration_minutes, activity_type, NULL, purpose, participants
+      FROM check_ins;
+      DROP TABLE check_ins;
+      ALTER TABLE check_ins_new RENAME TO check_ins;
+      CREATE INDEX IF NOT EXISTS idx_check_ins_created_at ON check_ins (created_at);
+      COMMIT;
+    `);
+    info = await db.getAllAsync<{ name: string; notnull: number }>("PRAGMA table_info(check_ins)");
+  }
+
+  if (!info.some((c) => c.name === "activity_types")) {
+    await db.execAsync("ALTER TABLE check_ins ADD COLUMN activity_types TEXT");
+  }
+  if (!info.some((c) => c.name === "quality")) {
+    await db.execAsync("ALTER TABLE check_ins ADD COLUMN quality INTEGER NOT NULL DEFAULT 0");
+  }
+  // Backfill activity_types from the legacy single activity_type.
+  const rows = await db.getAllAsync<{ id: string; activity_type: string }>(
+    "SELECT id, activity_type FROM check_ins WHERE activity_types IS NULL"
+  );
+  for (const r of rows) {
+    await db.runAsync("UPDATE check_ins SET activity_types = ? WHERE id = ?", [
+      JSON.stringify([r.activity_type]),
+      r.id,
+    ]);
+  }
+
+  // Migrate quality from the old -2..+2 scale to 1..5 (shift +3). Detected by
+  // any value below the new minimum of 1 (the old scale had 0 and negatives).
+  const q = await db.getFirstAsync<{ minq: number | null }>("SELECT MIN(quality) AS minq FROM check_ins");
+  if (q && q.minq != null && q.minq < 1) {
+    await db.execAsync("UPDATE check_ins SET quality = MIN(5, MAX(1, quality + 3))");
+  }
+
+  // Rename activities in stored data to match the current list. "Renter" was
+  // retired, so fold any stored Renter check-ins into "Other".
+  const renames: [string, string][] = [
+    ["Showing", "Meeting"],
+    ["Subway", "Travel"],
+    ["Renter", "Other"],
+  ];
+  for (const [oldName, newName] of renames) {
+    const hit = await db.getFirstAsync("SELECT 1 FROM check_ins WHERE activity_types LIKE ? LIMIT 1", [`%"${oldName}"%`]);
+    if (hit) {
+      await db.runAsync("UPDATE check_ins SET activity_types = REPLACE(activity_types, ?, ?)", [`"${oldName}"`, `"${newName}"`]);
+      await db.runAsync("UPDATE check_ins SET activity_type = ? WHERE activity_type = ?", [newName, oldName]);
+    }
+  }
 }
 
 // --- change notifications so screens can refresh after a write ---
@@ -68,8 +155,22 @@ interface CheckInRow {
   weather_code: number | null;
   duration_minutes: number;
   activity_type: string;
+  activity_types: string | null;
+  quality: number | null;
   purpose: string;
   participants: string;
+}
+
+function parseActivityTypes(row: CheckInRow): CheckIn["activityTypes"] {
+  if (row.activity_types) {
+    try {
+      const parsed = JSON.parse(row.activity_types);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed as CheckIn["activityTypes"];
+    } catch {
+      // fall through to the legacy single value
+    }
+  }
+  return [row.activity_type] as CheckIn["activityTypes"];
 }
 
 function rowToCheckIn(row: CheckInRow): CheckIn {
@@ -84,7 +185,8 @@ function rowToCheckIn(row: CheckInRow): CheckIn {
     weatherCondition: row.weather_condition,
     weatherCode: row.weather_code,
     durationMinutes: row.duration_minutes,
-    activityType: row.activity_type as CheckIn["activityType"],
+    activityTypes: parseActivityTypes(row),
+    quality: typeof row.quality === "number" ? row.quality : 0,
     purpose: row.purpose,
     participants: JSON.parse(row.participants || "[]"),
   };
@@ -94,17 +196,18 @@ function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export async function insertCheckIn(input: NewCheckIn): Promise<CheckIn> {
+export async function insertCheckIn(input: NewCheckIn, createdAt?: string): Promise<CheckIn> {
   const db = await getDb();
   const checkIn: CheckIn = {
     ...input,
     id: makeId(),
-    createdAt: new Date().toISOString(),
+    createdAt: createdAt ?? new Date().toISOString(),
   };
+  const activities = checkIn.activityTypes.length ? checkIn.activityTypes : (["Other"] as CheckIn["activityTypes"]);
   await db.runAsync(
     `INSERT INTO check_ins
-      (id, created_at, latitude, longitude, place_label, temperature_c, dewpoint_c, weather_condition, weather_code, duration_minutes, activity_type, purpose, participants)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, created_at, latitude, longitude, place_label, temperature_c, dewpoint_c, weather_condition, weather_code, duration_minutes, activity_type, activity_types, quality, purpose, participants)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       checkIn.id,
       checkIn.createdAt,
@@ -116,13 +219,44 @@ export async function insertCheckIn(input: NewCheckIn): Promise<CheckIn> {
       checkIn.weatherCondition,
       checkIn.weatherCode,
       checkIn.durationMinutes,
-      checkIn.activityType,
+      activities[0],
+      JSON.stringify(activities),
+      checkIn.quality,
       checkIn.purpose,
       JSON.stringify(checkIn.participants ?? []),
     ]
   );
   notifyChanged();
   return checkIn;
+}
+
+export async function updateCheckIn(id: string, input: NewCheckIn, createdAt: string): Promise<void> {
+  const db = await getDb();
+  const activities = input.activityTypes.length ? input.activityTypes : (["Other"] as CheckIn["activityTypes"]);
+  await db.runAsync(
+    `UPDATE check_ins SET
+       created_at = ?, latitude = ?, longitude = ?, place_label = ?, temperature_c = ?, dewpoint_c = ?,
+       weather_condition = ?, weather_code = ?, duration_minutes = ?, activity_type = ?, activity_types = ?, quality = ?, purpose = ?, participants = ?
+     WHERE id = ?`,
+    [
+      createdAt,
+      input.latitude,
+      input.longitude,
+      input.placeLabel,
+      input.temperatureC,
+      input.dewpointC,
+      input.weatherCondition,
+      input.weatherCode,
+      input.durationMinutes,
+      activities[0],
+      JSON.stringify(activities),
+      input.quality,
+      input.purpose,
+      JSON.stringify(input.participants ?? []),
+      id,
+    ]
+  );
+  notifyChanged();
 }
 
 export async function deleteCheckIn(id: string): Promise<void> {
@@ -149,11 +283,8 @@ export async function getSettings(): Promise<Settings> {
   const rows = await db.getAllAsync<{ key: string; value: string }>(`SELECT key, value FROM settings`);
   const stored: Record<string, string> = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return {
-    birthDate: stored.birthDate ?? DEFAULT_SETTINGS.birthDate,
-    lifeExpectancyWeeks: stored.lifeExpectancyWeeks
-      ? Number(stored.lifeExpectancyWeeks)
-      : DEFAULT_SETTINGS.lifeExpectancyWeeks,
     temperatureUnit: (stored.temperatureUnit as Settings["temperatureUnit"]) ?? DEFAULT_SETTINGS.temperatureUnit,
+    themeName: (stored.themeName as Settings["themeName"]) ?? DEFAULT_SETTINGS.themeName,
   };
 }
 
