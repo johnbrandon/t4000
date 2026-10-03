@@ -2,10 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
-import StatCard from "../../components/StatCard";
 import AppointmentsChart from "../../components/AppointmentsChart";
 import DailyBarChart from "../../components/DailyBarChart";
-import QualityChart from "../../components/QualityChart";
 import YearGrid from "../../components/YearGrid";
 import YieldLineChart, { type YieldStatus } from "../../components/YieldLineChart";
 import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
@@ -84,33 +82,6 @@ export default function YearScreen() {
     return map;
   }, [checkIns, year]);
 
-  // Average interaction quality per day for the quality chart.
-  const qualityByDay = useMemo(() => {
-    const sums = new Map<string, { total: number; count: number }>();
-    for (const c of checkIns) {
-      const date = new Date(c.createdAt);
-      if (date.getFullYear() !== year) continue;
-      const key = localDayKey(date);
-      const entry = sums.get(key) ?? { total: 0, count: 0 };
-      entry.total += c.quality;
-      entry.count += 1;
-      sums.set(key, entry);
-    }
-    const avg = new Map<string, number>();
-    for (const [key, { total, count }] of sums) avg.set(key, total / count);
-    return avg;
-  }, [checkIns, year]);
-
-  const yearStats = useMemo(() => {
-    let totalMinutes = 0;
-    let checkInCount = 0;
-    for (const summary of dayData.values()) {
-      totalMinutes += summary.totalMinutes;
-      checkInCount += summary.count;
-    }
-    return { activeDays: dayData.size, totalMinutes, checkInCount };
-  }, [dayData]);
-
   const selectedSummary: DaySummary | null = selectedDate ? dayData.get(selectedDate) ?? null : null;
 
   return (
@@ -129,11 +100,6 @@ export default function YearScreen() {
           </View>
         ) : null}
 
-        <View style={styles.statsRow}>
-          <StatCard label="Days active" value={String(yearStats.activeDays)} accent={theme.color.accent} />
-          <StatCard label="Check-ins" value={String(yearStats.checkInCount)} accent={theme.color.accentBlue} />
-        </View>
-
         <View style={styles.gridCard}>
           <YearGrid
             year={year}
@@ -142,8 +108,6 @@ export default function YearScreen() {
             onSelectDay={setSelectedDate}
           />
         </View>
-
-        <QualityChart year={year} qualityByDay={qualityByDay} />
 
         <DailyBarChart
           year={year}
@@ -239,11 +203,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     marginBottom: theme.spacing(2),
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: theme.spacing(3),
-    marginBottom: theme.spacing(5),
   },
   gridCard: {
     backgroundColor: theme.color.surface,

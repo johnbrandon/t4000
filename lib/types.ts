@@ -27,6 +27,11 @@ export const QUALITY_LEVELS = [
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
+// Activities offered when creating a check-in. "Travel" stays in ACTIVITY_TYPES
+// (and keeps its icon) so existing travel check-ins still display, but it's no
+// longer offered as an option for new check-ins.
+export const SELECTABLE_ACTIVITIES = ACTIVITY_TYPES.filter((a) => a !== "Travel");
+
 export interface CheckIn {
   id: string;
   createdAt: string; // ISO 8601

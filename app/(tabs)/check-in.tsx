@@ -18,7 +18,7 @@ import { deleteCheckIn, getCheckIn, insertCheckIn, updateCheckIn } from "../../l
 import { useContacts } from "../../lib/hooks";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
 import { theme } from "../../lib/theme";
-import { ACTIVITY_TYPES, QUALITY_LEVELS, QUALITY_NEUTRAL, type ActivityType } from "../../lib/types";
+import { QUALITY_NEUTRAL, SELECTABLE_ACTIVITIES, type ActivityType } from "../../lib/types";
 import { fetchWeather, fetchWeatherAt, formatTemperature, type WeatherSnapshot } from "../../lib/weather";
 
 type Mode = "now" | "past";
@@ -435,7 +435,7 @@ export default function CheckInScreen() {
 
           <Section title="Interactions (choose one or more)">
             <View style={styles.chipWrap}>
-              {ACTIVITY_TYPES.map((activity) => (
+              {SELECTABLE_ACTIVITIES.map((activity) => (
                 <Chip
                   key={activity}
                   label={activity}
@@ -443,39 +443,6 @@ export default function CheckInScreen() {
                   onPress={() => toggleActivity(activity)}
                 />
               ))}
-            </View>
-          </Section>
-
-          <Section title="Interaction quality">
-            <View style={styles.qualityRow}>
-              {QUALITY_LEVELS.map((level) => {
-                const active = quality === level.value;
-                const color =
-                  level.value > QUALITY_NEUTRAL
-                    ? theme.color.accent
-                    : level.value < QUALITY_NEUTRAL
-                    ? theme.color.danger
-                    : theme.color.textMuted;
-                const soft =
-                  level.value > QUALITY_NEUTRAL
-                    ? theme.color.accentSoft
-                    : level.value < QUALITY_NEUTRAL
-                    ? theme.color.dangerSoft
-                    : theme.color.textMutedSoft;
-                return (
-                  <Pressable
-                    key={level.value}
-                    style={[
-                      styles.qualityButton,
-                      active && { backgroundColor: soft, borderColor: color },
-                    ]}
-                    onPress={() => setQuality(level.value)}
-                  >
-                    <Text style={[styles.qualityValue, active && { color }]}>{level.value}</Text>
-                    <Text style={[styles.qualityLabel, active && { color }]}>{level.label}</Text>
-                  </Pressable>
-                );
-              })}
             </View>
           </Section>
 
@@ -707,29 +674,6 @@ const styles = StyleSheet.create({
   chipWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-  },
-  qualityRow: {
-    flexDirection: "row",
-    gap: theme.spacing(2),
-  },
-  qualityButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: theme.spacing(2),
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.color.border,
-    backgroundColor: theme.color.surface,
-  },
-  qualityValue: {
-    color: theme.color.textSecondary,
-    fontSize: theme.font.subtitle,
-    fontWeight: "800",
-  },
-  qualityLabel: {
-    color: theme.color.textMuted,
-    fontSize: 10,
-    marginTop: 2,
   },
   input: {
     backgroundColor: theme.color.surface,
