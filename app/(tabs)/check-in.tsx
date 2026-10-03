@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
 import { deleteCheckIn, getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
+import { useContacts } from "../../lib/hooks";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
 import { theme } from "../../lib/theme";
 import { ACTIVITY_TYPES, QUALITY_LEVELS, QUALITY_NEUTRAL, type ActivityType } from "../../lib/types";
@@ -68,6 +69,7 @@ export default function CheckInScreen() {
   const [purpose, setPurpose] = useState("");
   const [participantInput, setParticipantInput] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
+  const { contacts } = useContacts();
   const [durationMinutes, setDurationMinutes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -169,16 +171,40 @@ export default function CheckInScreen() {
     };
   }, [latInput, lonInput, mode]);
 
-  function addParticipant() {
-    const name = participantInput.trim();
+  function addParticipantName(raw: string) {
+    const name = raw.trim();
     if (!name) return;
-    setParticipants((prev) => [...prev, name]);
+    setParticipants((prev) => (prev.includes(name) ? prev : [...prev, name]));
     setParticipantInput("");
+  }
+
+  function addParticipant() {
+    addParticipantName(participantInput);
   }
 
   function removeParticipant(name: string) {
     setParticipants((prev) => prev.filter((p) => p !== name));
   }
+
+  // Suggest contacts as the user types a participant name. Match on name, email
+  // or organization; hide anyone already added; cap the list. Free-text names
+  // (people not in contacts) still work via the + button / Enter.
+  const participantSuggestions = useMemo(() => {
+    const q = participantInput.trim().toLowerCase();
+    if (!q) return [];
+    const seen = new Set<string>();
+    const out: typeof contacts = [];
+    for (const c of contacts) {
+      const name = c.fullName?.trim();
+      if (!name || participants.includes(name) || seen.has(name.toLowerCase())) continue;
+      const haystack = [name, c.organization ?? "", ...c.emails].join(" ").toLowerCase();
+      if (!haystack.includes(q)) continue;
+      seen.add(name.toLowerCase());
+      out.push(c);
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [contacts, participantInput, participants]);
 
   async function fillCurrentCoords() {
     try {
@@ -490,6 +516,33 @@ export default function CheckInScreen() {
                 <MaterialCommunityIcons name="plus" size={20} color={theme.color.background} />
               </Pressable>
             </View>
+            {participantSuggestions.length > 0 ? (
+              <View style={styles.suggestionBox}>
+                {participantSuggestions.map((c, i) => {
+                  const sub = c.emails[0] ?? c.organization ?? "";
+                  return (
+                    <Pressable
+                      key={c.id}
+                      style={[styles.suggestionRow, i > 0 && styles.suggestionRowDivider]}
+                      onPress={() => addParticipantName(c.fullName)}
+                    >
+                      <MaterialCommunityIcons name="account-circle-outline" size={20} color={theme.color.textMuted} />
+                      <View style={styles.suggestionBody}>
+                        <Text style={styles.suggestionName} numberOfLines={1}>
+                          {c.fullName}
+                        </Text>
+                        {sub ? (
+                          <Text style={styles.suggestionSub} numberOfLines={1}>
+                            {sub}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <MaterialCommunityIcons name="plus" size={16} color={theme.color.accent} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
             {participants.length > 0 ? (
               <View style={styles.chipWrap}>
                 {participants.map((name) => (
@@ -702,6 +755,38 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.accent,
     alignItems: "center",
     justifyContent: "center",
+  },
+  suggestionBox: {
+    marginTop: theme.spacing(2),
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.color.surface,
+    overflow: "hidden",
+  },
+  suggestionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing(2),
+    paddingHorizontal: theme.spacing(3),
+    paddingVertical: theme.spacing(2),
+  },
+  suggestionRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: theme.color.border,
+  },
+  suggestionBody: {
+    flex: 1,
+  },
+  suggestionName: {
+    color: theme.color.textPrimary,
+    fontSize: theme.font.body,
+    fontWeight: "500",
+  },
+  suggestionSub: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.caption,
+    marginTop: 1,
   },
   locationCard: {
     backgroundColor: theme.color.surface,
