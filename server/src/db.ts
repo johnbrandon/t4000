@@ -1,16 +1,35 @@
 import { Pool } from "pg";
 
-// Connects to the Postgres given by DATABASE_URL (Railway injects this). Enable
-// TLS for any non-local host; Railway's public Postgres requires it.
+// Connects to the Postgres given by DATABASE_URL (Railway injects this). Railway
+// hands out either a public proxy URL (needs TLS) or a private
+// `*.railway.internal` URL (no TLS); pick SSL accordingly. PGSSL=disable|require
+// forces it if ever needed.
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error("DATABASE_URL is not set");
 }
-const isLocal = /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString);
+
+function useSsl(url: string): boolean {
+  const forced = process.env.PGSSL;
+  if (forced === "disable") return false;
+  if (forced === "require") return true;
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    /* leave host empty */
+  }
+  const noTls =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".railway.internal") ||
+    host.endsWith(".internal");
+  return !noTls;
+}
 
 export const pool = new Pool({
   connectionString,
-  ssl: isLocal ? false : { rejectUnauthorized: false },
+  ssl: useSsl(connectionString) ? { rejectUnauthorized: false } : false,
 });
 
 // --- model shapes (match the app's lib/types.ts CheckIn / Settings) ---
