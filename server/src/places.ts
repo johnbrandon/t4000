@@ -79,12 +79,14 @@ export async function searchNearby(
   const hit = cache.get(cacheKey);
   if (hit && hit.expires > Date.now()) return hit.value;
 
+  // NB: we deliberately do NOT send a `fields` selector. Restricting fields can
+  // silently drop latitude/longitude from the response (they're returned by
+  // default), which would leave venue pins stuck at the device location.
   const params = new URLSearchParams({
     ll: `${lat},${lon}`,
     radius: "2000",
     limit: String(capped),
     sort: q ? "RELEVANCE" : "DISTANCE",
-    fields: "fsq_place_id,name,categories,location,latitude,longitude,distance",
   });
   if (q) params.set("query", q);
 

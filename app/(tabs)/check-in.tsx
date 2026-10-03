@@ -91,9 +91,10 @@ export default function CheckInScreen() {
   const [addressLoading, setAddressLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const existingWeather = useRef<WeatherSnapshot | null>(null);
-  // Coordinates a check-in was loaded with, so editing other fields doesn't
-  // re-geocode and overwrite a chosen venue name with a street address.
+  // What a check-in was loaded with, so editing other fields doesn't re-geocode
+  // and overwrite a chosen venue name with a street address.
   const editOriginalCoords = useRef<{ lat: number | null; lon: number | null } | null>(null);
+  const editOriginalLabel = useRef<string | null>(null);
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
 
@@ -185,6 +186,7 @@ export default function CheckInScreen() {
       setLonInput(c.longitude != null ? String(c.longitude) : "");
       setResolvedAddress(c.placeLabel);
       editOriginalCoords.current = { lat: c.latitude, lon: c.longitude };
+      editOriginalLabel.current = c.placeLabel;
       existingWeather.current = c.weatherCode != null && c.temperatureC != null
         ? {
             temperatureC: c.temperatureC,
@@ -389,10 +391,17 @@ export default function CheckInScreen() {
     if (anyCoord && validCoords) {
       latitude = lat;
       longitude = lon;
-      // Resolve the address (reuse the already-resolved one when present) and
-      // look up the historical weather for that date/time & place.
+      // If we're editing and the coordinates are unchanged, keep the saved label
+      // (e.g. a Foursquare venue name) verbatim — never reverse-geocode over it.
+      const orig = editOriginalCoords.current;
+      const coordsUnchanged = editing && !!orig && lat === orig.lat && lon === orig.lon;
+      const addrPromise = coordsUnchanged
+        ? Promise.resolve(editOriginalLabel.current ?? resolvedAddress ?? null)
+        : resolvedAddress
+          ? Promise.resolve(resolvedAddress)
+          : reverseGeocode({ latitude, longitude });
       const [addr, fetched] = await Promise.all([
-        resolvedAddress ? Promise.resolve(resolvedAddress) : reverseGeocode({ latitude, longitude }),
+        addrPromise,
         fetchWeatherAt(latitude, longitude, when).catch(() => null),
       ]);
       placeLabel = addr ?? resolvedAddress ?? null;
