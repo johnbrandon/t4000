@@ -20,6 +20,8 @@ the `Dockerfile` at the repo root.
      openssl rand -hex 32
      ```
    - `NODE_ENV` → `production` (so the auth cookie is sent `Secure`).
+   - `ICLOUD_USERNAME` / `ICLOUD_APP_PASSWORD` _(optional — enables the Contacts
+     import; see below)_.
    - `PORT` is injected by Railway automatically — don't set it.
 5. **Deploy.** Railway builds the image (web export + server) and starts it. The
    health check hits `/api/health`. When it's green, open the generated URL (or add a
@@ -34,6 +36,26 @@ the `Dockerfile` at the repo root.
 - Auth is a single shared password → an HMAC-signed, httpOnly session cookie (90-day
   expiry). Because the web app is same-origin with the API, the cookie "just works"
   with no CORS and no token handling in the browser.
+
+## Contacts (iCloud import)
+
+The Contacts tab mirrors your iCloud contacts into Postgres, **read-only** — the app
+only ever reads from iCloud, it never writes back. iCloud has no contacts OAuth and
+its CardDAV endpoint sends no CORS headers, so the import runs server-side over
+CardDAV using an app-specific password (never your Apple ID account password).
+
+To enable it, set two variables on the app service:
+
+- `ICLOUD_USERNAME` → your Apple ID (e.g. `you@icloud.com`).
+- `ICLOUD_APP_PASSWORD` → an app-specific password from
+  [appleid.apple.com](https://appleid.apple.com) → _Sign-In & Security_ →
+  _App-Specific Passwords_. Keep the dashes.
+
+These live only as server-side env vars — they're never exposed to the browser. With
+them set, the Contacts tab shows a **Sync iCloud** button; tapping it fetches your
+vCards, upserts them keyed on each contact's iCloud UID (so repeat syncs don't
+duplicate), and removes any that were deleted upstream. Without them, the tab explains
+that iCloud isn't configured.
 
 ## Notes
 

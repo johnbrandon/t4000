@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { getSettings, listCheckIns, setSetting, subscribeCheckIns } from "./db";
-import type { CheckIn, Settings } from "./types";
+import {
+  getSettings,
+  listCheckIns,
+  listContacts,
+  setSetting,
+  subscribeCheckIns,
+  subscribeContacts,
+} from "./db";
+import type { CheckIn, Contact, Settings } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 
 export function useCheckIns() {
@@ -44,4 +51,23 @@ export function useSettings() {
   }, []);
 
   return { settings, loading, update };
+}
+
+export function useContacts() {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(() => {
+    listContacts()
+      .then(setContacts)
+      .catch((err) => console.warn("Failed to load contacts", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    return subscribeContacts(refresh);
+  }, [refresh]);
+
+  return { contacts, loading, refresh };
 }

@@ -76,6 +76,19 @@ export async function migrate(): Promise<void> {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS contacts (
+      id TEXT PRIMARY KEY,
+      icloud_uid TEXT UNIQUE,
+      full_name TEXT NOT NULL DEFAULT '',
+      emails JSONB NOT NULL DEFAULT '[]'::jsonb,
+      phones JSONB NOT NULL DEFAULT '[]'::jsonb,
+      addresses JSONB NOT NULL DEFAULT '[]'::jsonb,
+      organization TEXT,
+      source TEXT NOT NULL DEFAULT 'icloud',
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_contacts_full_name ON contacts (lower(full_name));
   `);
 }
 
@@ -209,4 +222,100 @@ export async function setSetting(key: string, value: string): Promise<void> {
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     [key, value]
   );
+}
+
+// --- contacts ---
+export interface Contact {
+  id: string;
+  icloudUid: string | null;
+  fullName: string;
+  emails: string[];
+  phones: string[];
+  addresses: string[];
+  organization: string | null;
+  source: string; // "icloud" | "manual"
+  updatedAt: string; // ISO 8601
+}
+
+// What an importer hands us: everything but the local id + timestamp.
+export type ContactImport = Omit<Contact, "id" | "updatedAt">;
+
+interface ContactRow {
+  id: string;
+  icloud_uid: string | null;
+  full_name: string;
+  emails: unknown;
+  phones: unknown;
+  addresses: unknown;
+  organization: string | null;
+  source: string;
+  updated_at: string;
+}
+
+function rowToContact(row: ContactRow): Contact {
+  return {
+    id: row.id,
+    icloudUid: row.icloud_uid,
+    fullName: row.full_name,
+    emails: asStringArray(row.emails),
+    phones: asStringArray(row.phones),
+    addresses: asStringArray(row.addresses),
+    organization: row.organization,
+    source: row.source,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function listContacts(): Promise<Contact[]> {
+  const { rows } = await pool.query<ContactRow>(
+    "SELECT * FROM contacts ORDER BY lower(full_name) ASC, id ASC"
+  );
+  return rows.map(rowToContact);
+}
+
+export async function getContact(id: string): Promise<Contact | null> {
+  const { rows } = await pool.query<ContactRow>("SELECT * FROM contacts WHERE id = $1", [id]);
+  return rows[0] ? rowToContact(rows[0]) : null;
+}
+
+// Upsert an iCloud contact keyed on its stable iCloud UID: new UIDs insert, known
+// ones update in place (keeping the local id), so repeat syncs never duplicate.
+export async function upsertICloudContact(input: ContactImport): Promise<void> {
+  if (!input.icloudUid) return; // can't dedupe without a stable key; skip.
+  await pool.query(
+    `INSERT INTO contacts (id, icloud_uid, full_name, emails, phones, addresses, organization, source, updated_at)
+     VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,$7,$8,$9)
+     ON CONFLICT (icloud_uid) DO UPDATE SET
+       full_name = EXCLUDED.full_name,
+       emails = EXCLUDED.emails,
+       phones = EXCLUDED.phones,
+       addresses = EXCLUDED.addresses,
+       organization = EXCLUDED.organization,
+       source = EXCLUDED.source,
+       updated_at = EXCLUDED.updated_at`,
+    [
+      makeId(),
+      input.icloudUid,
+      input.fullName ?? "",
+      JSON.stringify(input.emails ?? []),
+      JSON.stringify(input.phones ?? []),
+      JSON.stringify(input.addresses ?? []),
+      input.organization ?? null,
+      input.source ?? "icloud",
+      new Date().toISOString(),
+    ]
+  );
+}
+
+// Delete iCloud-sourced contacts whose UID is no longer in iCloud (handles
+// contacts the user removed upstream). Never touches manually-added contacts.
+export async function pruneICloudContactsNotIn(keepUids: string[]): Promise<number> {
+  const { rowCount } = await pool.query(
+    `DELETE FROM contacts
+     WHERE source = 'icloud'
+       AND icloud_uid IS NOT NULL
+       AND NOT (icloud_uid = ANY($1::text[]))`,
+    [keepUids]
+  );
+  return rowCount ?? 0;
 }

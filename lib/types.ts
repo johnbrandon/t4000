@@ -46,6 +46,18 @@ export interface CheckIn {
 
 export type NewCheckIn = Omit<CheckIn, "id" | "createdAt">;
 
+export interface Contact {
+  id: string;
+  icloudUid: string | null;
+  fullName: string;
+  emails: string[];
+  phones: string[];
+  addresses: string[];
+  organization: string | null;
+  source: string; // "icloud" | "manual"
+  updatedAt: string; // ISO 8601
+}
+
 export interface Settings {
   temperatureUnit: "C" | "F";
   themeName: "light" | "night";

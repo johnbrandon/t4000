@@ -6,14 +6,17 @@ import { handleLogin, handleLogout, isAuthed, requireAuth } from "./auth";
 import {
   deleteCheckIn,
   getCheckIn,
+  getContact,
   getSettings,
   insertCheckIn,
   listCheckIns,
+  listContacts,
   migrate,
   setSetting,
   updateCheckIn,
   type NewCheckIn,
 } from "./db";
+import { icloudConfigured, syncContacts } from "./icloud";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const STATIC_DIR = process.env.STATIC_DIR ?? path.resolve(__dirname, "../../dist");
@@ -105,6 +108,47 @@ app.put(
     }
     await setSetting(req.params.key, value);
     res.json({ ok: true });
+  })
+);
+
+// --- contacts ---
+app.get(
+  "/api/icloud/status",
+  wrap(async (_req, res) => {
+    res.json({ configured: icloudConfigured() });
+  })
+);
+
+app.post(
+  "/api/contacts/sync",
+  wrap(async (_req, res) => {
+    if (!icloudConfigured()) {
+      res.status(400).json({ error: "iCloud is not configured on the server." });
+      return;
+    }
+    try {
+      const result = await syncContacts();
+      res.json(result);
+    } catch (err) {
+      console.error("[t4000] iCloud sync failed:", err);
+      res.status(502).json({ error: "iCloud sync failed. Check the Apple ID and app-specific password." });
+    }
+  })
+);
+
+app.get(
+  "/api/contacts",
+  wrap(async (_req, res) => {
+    res.json(await listContacts());
+  })
+);
+
+app.get(
+  "/api/contacts/:id",
+  wrap(async (req, res) => {
+    const found = await getContact(req.params.id);
+    if (!found) res.status(404).json({ error: "Not found" });
+    else res.json(found);
   })
 );
 
