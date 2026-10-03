@@ -23,7 +23,16 @@ async function request(path: string, options: RequestInit = {}): Promise<Respons
     throw new Error("Not authenticated");
   }
   if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
+    // Surface the server's { error } message when it sends one, so callers can
+    // show a useful reason instead of a bare status code.
+    let message = `Request failed: ${res.status}`;
+    try {
+      const body = await res.clone().json();
+      if (body && typeof body.error === "string") message = body.error;
+    } catch {
+      /* non-JSON body; keep the status message */
+    }
+    throw new Error(message);
   }
   return res;
 }

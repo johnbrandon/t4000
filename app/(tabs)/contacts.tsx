@@ -63,8 +63,8 @@ export default function ContactsScreen() {
       const parts = [`${result.imported} imported`];
       if (result.pruned > 0) parts.push(`${result.pruned} removed`);
       setSyncMsg(`Synced from iCloud: ${parts.join(", ")}.`);
-    } catch {
-      setSyncMsg("Sync failed. Check the Apple ID and app-specific password on the server.");
+    } catch (e) {
+      setSyncMsg(e instanceof Error ? e.message : "Sync failed. Check the iCloud credentials on the server.");
     } finally {
       setSyncing(false);
     }

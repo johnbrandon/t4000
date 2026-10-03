@@ -133,18 +133,42 @@ export interface SyncResult {
   addressBooks: number;
 }
 
+function reason(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  try {
+    return typeof err === "string" ? err : JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
 export async function syncContacts(): Promise<SyncResult> {
   if (!icloudConfigured()) {
     throw new Error("iCloud is not configured on the server");
   }
-  const client = await createDAVClient({
-    serverUrl: ICLOUD_CARDDAV_URL,
-    credentials: { username: USERNAME as string, password: APP_PASSWORD as string },
-    authMethod: "Basic",
-    defaultAccountType: "carddav",
-  });
 
-  const addressBooks = await client.fetchAddressBooks();
+  // createDAVClient authenticates and discovers the CardDAV principal/home-set,
+  // so a bad Apple ID or app-specific password surfaces here.
+  let client: Awaited<ReturnType<typeof createDAVClient>>;
+  try {
+    client = await createDAVClient({
+      serverUrl: ICLOUD_CARDDAV_URL,
+      credentials: { username: USERNAME as string, password: APP_PASSWORD as string },
+      authMethod: "Basic",
+      defaultAccountType: "carddav",
+    });
+  } catch (err) {
+    throw new Error(
+      `could not sign in to iCloud as "${USERNAME}" — check the Apple ID and app-specific password (${reason(err)})`
+    );
+  }
+
+  let addressBooks: Awaited<ReturnType<typeof client.fetchAddressBooks>>;
+  try {
+    addressBooks = await client.fetchAddressBooks();
+  } catch (err) {
+    throw new Error(`signed in, but could not read iCloud address books (${reason(err)})`);
+  }
   const keepUids: string[] = [];
   let imported = 0;
 

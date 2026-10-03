@@ -131,7 +131,8 @@ app.post(
       res.json(result);
     } catch (err) {
       console.error("[t4000] iCloud sync failed:", err);
-      res.status(502).json({ error: "iCloud sync failed. Check the Apple ID and app-specific password." });
+      const detail = err instanceof Error ? err.message : String(err);
+      res.status(502).json({ error: `iCloud sync failed: ${detail}` });
     }
   })
 );
