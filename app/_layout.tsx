@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import LoginGate from "../components/LoginGate";
 import { ThemeProvider, useThemeName } from "../lib/ThemeContext";
 import { registerPwa } from "../lib/pwa";
 import { theme } from "../lib/theme";
@@ -13,9 +14,11 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <Chrome />
-      </ThemeProvider>
+      <LoginGate>
+        <ThemeProvider>
+          <Chrome />
+        </ThemeProvider>
+      </LoginGate>
     </SafeAreaProvider>
   );
 }

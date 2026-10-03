@@ -1,8 +1,9 @@
 name: Deploy PWA to GitHub Pages
 
+# The app now requires the backend API (hosted on Railway), so the static Pages
+# build can't function on its own. Auto-deploy on push is disabled; this remains
+# runnable manually only. Retire it once Railway is the canonical host.
 on:
-  push:
-    branches: [claude/react-native-checkin-tracker-fd34ro]
   workflow_dispatch:
 
 # Allow the workflow to publish to GitHub Pages.
