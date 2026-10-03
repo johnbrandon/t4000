@@ -33,6 +33,11 @@ the `Dockerfile` at the repo root.
   - `/api/*` — the JSON API (everything except `/api/health`, `/api/login`,
     `/api/me` requires the session cookie).
   - everything else — the static web app, with SPA fallback to `index.html`.
+- Weather (Open-Meteo) and the 10-year Treasury yield (FRED series DGS10) are
+  fetched **server-side** and cached, then exposed under `/api/weather/*` and
+  `/api/treasury` (both behind auth). The browser no longer calls those APIs
+  directly, which removes the old CORS proxy for FRED. No extra keys are needed —
+  both upstreams are keyless.
 - Auth is a single shared password → an HMAC-signed, httpOnly session cookie (90-day
   expiry). Because the web app is same-origin with the API, the cookie "just works"
   with no CORS and no token handling in the browser.

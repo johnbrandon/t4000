@@ -1,8 +1,11 @@
-// Open-Meteo is free and keyless, so check-ins can fetch live conditions
-// without asking the user (or us) to manage API credentials.
-const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
+// Weather for the app. Fetching now happens on the server (see server/src/market.ts)
+// and is reached through our authenticated API; this module keeps the same exported
+// surface the screens already use, plus the pure formatting helpers that stay on the
+// client. A small per-session cache avoids refetching when screens remount.
+import { apiJson } from "./api";
 
-// WMO weather interpretation codes used by Open-Meteo.
+// WMO weather interpretation codes used by Open-Meteo (kept for any client-side
+// labeling; the server also sends a ready-made weatherCondition).
 const WEATHER_CODE_LABELS: Record<number, string> = {
   0: "Clear sky",
   1: "Mostly clear",
@@ -46,134 +49,42 @@ export interface WeatherSnapshot {
   weatherCondition: string;
 }
 
-// Magnus-Tetens approximation, used as a fallback if the API response is
-// ever missing dew_point_2m for a given location.
-function estimateDewpointC(temperatureC: number, relativeHumidity: number): number {
-  const a = 17.62;
-  const b = 243.12;
-  const gamma = (a * temperatureC) / (b + temperatureC) + Math.log(Math.max(relativeHumidity, 1) / 100);
-  return (b * gamma) / (a - gamma);
-}
-
-export async function fetchWeather(latitude: number, longitude: number): Promise<WeatherSnapshot> {
-  const url = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,dew_point_2m,weather_code&temperature_unit=celsius&timezone=auto`;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`Weather request failed with status ${response.status}`);
-    }
-    const data = await response.json();
-    const current = data.current ?? {};
-    const temperatureC: number = current.temperature_2m;
-    const weatherCode: number = current.weather_code;
-    const dewpointC: number =
-      typeof current.dew_point_2m === "number"
-        ? current.dew_point_2m
-        : estimateDewpointC(temperatureC, current.relative_humidity_2m ?? 50);
-
-    return {
-      temperatureC,
-      dewpointC,
-      weatherCode,
-      weatherCondition: weatherLabel(weatherCode),
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
+function pad2(n: number): string {
+  return `${n}`.padStart(2, "0");
 }
 
 function localDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = `${date.getMonth() + 1}`.padStart(2, "0");
-  const d = `${date.getDate()}`.padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-interface HourlyResponse {
-  hourly?: {
-    time?: string[];
-    temperature_2m?: (number | null)[];
-    dew_point_2m?: (number | null)[];
-    relative_humidity_2m?: (number | null)[];
-    weather_code?: (number | null)[];
-  };
+// Live conditions at a coordinate. Throws on failure (callers catch), matching
+// the previous contract.
+export async function fetchWeather(latitude: number, longitude: number): Promise<WeatherSnapshot> {
+  const snap = await apiJson<WeatherSnapshot | null>(
+    `/api/weather/current?lat=${latitude}&lon=${longitude}`
+  );
+  if (!snap) throw new Error("No weather available");
+  return snap;
 }
 
-// Pick the hour closest to `when` from an Open-Meteo hourly response.
-function snapshotFromHourly(data: HourlyResponse, when: Date): WeatherSnapshot | null {
-  const hourly = data.hourly;
-  if (!hourly?.time?.length) return null;
-  const target = `${localDateKey(when)}T${`${when.getHours()}`.padStart(2, "0")}:00`;
-
-  let index = hourly.time.indexOf(target);
-  if (index === -1) {
-    // Fall back to the numerically nearest timestamp.
-    const targetMs = when.getTime();
-    let best = Infinity;
-    hourly.time.forEach((t, i) => {
-      const diff = Math.abs(new Date(t).getTime() - targetMs);
-      if (diff < best) {
-        best = diff;
-        index = i;
-      }
-    });
-  }
-  if (index === -1) return null;
-
-  const temperatureC = hourly.temperature_2m?.[index];
-  const weatherCode = hourly.weather_code?.[index];
-  if (typeof temperatureC !== "number" || typeof weatherCode !== "number") return null;
-
-  const dp = hourly.dew_point_2m?.[index];
-  const dewpointC =
-    typeof dp === "number"
-      ? dp
-      : estimateDewpointC(temperatureC, hourly.relative_humidity_2m?.[index] ?? 50);
-
-  return { temperatureC, dewpointC, weatherCode, weatherCondition: weatherLabel(weatherCode) };
-}
-
-async function fetchHourly(url: string): Promise<HourlyResponse | null> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
-    return (await response.json()) as HourlyResponse;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-// Historical weather for a past date/time & location. Open-Meteo's archive API
-// covers older dates; very recent days (not yet archived) are served by the
-// forecast API's date range, so we try the archive first and fall back.
+// Historical conditions for a past date/time at a coordinate. The server matches
+// on the local wall-clock date + hour the user entered, so we send those parts.
 export async function fetchWeatherAt(
   latitude: number,
   longitude: number,
   when: Date
 ): Promise<WeatherSnapshot | null> {
-  const day = localDateKey(when);
-  const hourlyVars = "temperature_2m,dew_point_2m,relative_humidity_2m,weather_code";
-
-  const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${day}&end_date=${day}&hourly=${hourlyVars}&timezone=auto`;
-  const archive = await fetchHourly(archiveUrl);
-  const fromArchive = archive && snapshotFromHourly(archive, when);
-  if (fromArchive) return fromArchive;
-
-  const forecastUrl = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&start_date=${day}&end_date=${day}&hourly=${hourlyVars}&timezone=auto`;
-  const forecast = await fetchHourly(forecastUrl);
-  return forecast ? snapshotFromHourly(forecast, when) : null;
+  try {
+    return await apiJson<WeatherSnapshot | null>(
+      `/api/weather/at?lat=${latitude}&lon=${longitude}&date=${localDateKey(when)}&hour=${when.getHours()}`
+    );
+  } catch {
+    return null;
+  }
 }
 
-// Daily mean temperature for every day of a year at one location (Open-Meteo
-// archive), used to backfill the calendar on days without a check-in. Cached
-// per location+year for the session.
+// Daily mean temperature + precipitation for a whole year at one location, used
+// to backfill the calendar. Cached per location+year for the session.
 export interface DailyWeather {
   meanTempC: Map<string, number>; // temperature_2m_mean (°C)
   precipMm: Map<string, number>; // precipitation_sum (mm)
@@ -181,63 +92,24 @@ export interface DailyWeather {
 
 const dailyWeatherCache = new Map<string, DailyWeather>();
 
-const DAILY_VARS = "temperature_2m_mean,precipitation_sum";
-
-interface DailyResponse {
-  daily?: Record<string, (number | null)[] | string[] | undefined> & { time?: string[] };
-}
-
-function mergeVar(target: Map<string, number>, data: DailyResponse | null, variable: string) {
-  const times = (data?.daily?.time ?? []) as string[];
-  const values = (data?.daily?.[variable] ?? []) as (number | null)[];
-  times.forEach((t, i) => {
-    const v = values[i];
-    if (typeof v === "number") target.set(t, v);
-  });
-}
-
-async function fetchDaily(url: string): Promise<DailyResponse | null> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
-    return (await response.json()) as DailyResponse;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-// Daily mean temperature and total precipitation for every day of a year at a
-// location. End date is today for the current year; the recent archive lag is
-// filled from the forecast API. Cached per location+year.
 export async function fetchDailyWeather(latitude: number, longitude: number, year: number): Promise<DailyWeather> {
   const cacheKey = `${latitude.toFixed(2)},${longitude.toFixed(2)},${year}`;
   const cached = dailyWeatherCache.get(cacheKey);
   if (cached) return cached;
 
-  const result: DailyWeather = { meanTempC: new Map(), precipMm: new Map() };
-  const now = new Date();
-  const nowYear = now.getFullYear();
-  if (year > nowYear) return result; // no history for a future year
-
-  const archiveEnd = year < nowYear ? `${year}-12-31` : localDateKey(now);
-  const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${year}-01-01&end_date=${archiveEnd}&daily=${DAILY_VARS}&timezone=auto`;
-  const archive = await fetchDaily(archiveUrl);
-  mergeVar(result.meanTempC, archive, "temperature_2m_mean");
-  mergeVar(result.precipMm, archive, "precipitation_sum");
-
-  if (year === nowYear) {
-    const forecastUrl = `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&daily=${DAILY_VARS}&past_days=14&forecast_days=1&timezone=auto`;
-    const forecast = await fetchDaily(forecastUrl);
-    mergeVar(result.meanTempC, forecast, "temperature_2m_mean");
-    mergeVar(result.precipMm, forecast, "precipitation_sum");
+  try {
+    const data = await apiJson<{ meanTempC: Record<string, number>; precipMm: Record<string, number> }>(
+      `/api/weather/daily?lat=${latitude}&lon=${longitude}&year=${year}`
+    );
+    const result: DailyWeather = {
+      meanTempC: new Map(Object.entries(data.meanTempC ?? {})),
+      precipMm: new Map(Object.entries(data.precipMm ?? {})),
+    };
+    if (result.meanTempC.size > 0 || result.precipMm.size > 0) dailyWeatherCache.set(cacheKey, result);
+    return result;
+  } catch {
+    return { meanTempC: new Map(), precipMm: new Map() };
   }
-
-  if (result.meanTempC.size > 0 || result.precipMm.size > 0) dailyWeatherCache.set(cacheKey, result);
-  return result;
 }
 
 export function celsiusToFahrenheit(celsius: number): number {

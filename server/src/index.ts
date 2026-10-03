@@ -17,6 +17,7 @@ import {
   type NewCheckIn,
 } from "./db";
 import { icloudConfigured, syncContacts } from "./icloud";
+import { currentWeather, dailyWeather, treasuryYields, weatherAt } from "./market";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const STATIC_DIR = process.env.STATIC_DIR ?? path.resolve(__dirname, "../../dist");
@@ -150,6 +151,66 @@ app.get(
     const found = await getContact(req.params.id);
     if (!found) res.status(404).json({ error: "Not found" });
     else res.json(found);
+  })
+);
+
+// --- market data (weather + treasury), fetched server-side and cached ---
+function num(value: unknown): number | null {
+  const n = typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+app.get(
+  "/api/weather/current",
+  wrap(async (req, res) => {
+    const lat = num(req.query.lat);
+    const lon = num(req.query.lon);
+    if (lat === null || lon === null) {
+      res.status(400).json({ error: "lat and lon are required" });
+      return;
+    }
+    res.json(await currentWeather(lat, lon));
+  })
+);
+
+app.get(
+  "/api/weather/at",
+  wrap(async (req, res) => {
+    const lat = num(req.query.lat);
+    const lon = num(req.query.lon);
+    const date = typeof req.query.date === "string" ? req.query.date : "";
+    const hour = num(req.query.hour);
+    if (lat === null || lon === null || !/^\d{4}-\d{2}-\d{2}$/.test(date) || hour === null) {
+      res.status(400).json({ error: "lat, lon, date (YYYY-MM-DD) and hour are required" });
+      return;
+    }
+    res.json(await weatherAt(lat, lon, date, Math.max(0, Math.min(23, Math.round(hour)))));
+  })
+);
+
+app.get(
+  "/api/weather/daily",
+  wrap(async (req, res) => {
+    const lat = num(req.query.lat);
+    const lon = num(req.query.lon);
+    const year = num(req.query.year);
+    if (lat === null || lon === null || year === null) {
+      res.status(400).json({ error: "lat, lon and year are required" });
+      return;
+    }
+    res.json(await dailyWeather(lat, lon, Math.round(year)));
+  })
+);
+
+app.get(
+  "/api/treasury",
+  wrap(async (req, res) => {
+    const year = num(req.query.year);
+    if (year === null) {
+      res.status(400).json({ error: "year is required" });
+      return;
+    }
+    res.json(await treasuryYields(Math.round(year)));
   })
 );
 
