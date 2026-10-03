@@ -307,6 +307,55 @@ export async function upsertICloudContact(input: ContactImport): Promise<void> {
   );
 }
 
+// Upsert many iCloud contacts in a single statement (far fewer DB round-trips
+// than one query per contact). Dedupes within the batch because Postgres rejects
+// an ON CONFLICT that would touch the same conflict target twice in one command.
+export async function upsertICloudContactsBatch(inputs: ContactImport[]): Promise<number> {
+  const byUid = new Map<string, ContactImport>();
+  for (const input of inputs) {
+    if (input.icloudUid) byUid.set(input.icloudUid, input); // last one wins
+  }
+  const rows = [...byUid.values()];
+  if (rows.length === 0) return 0;
+
+  const cols = 9;
+  const now = new Date().toISOString();
+  const tuples: string[] = [];
+  const values: unknown[] = [];
+  rows.forEach((input, i) => {
+    const b = i * cols;
+    tuples.push(
+      `($${b + 1},$${b + 2},$${b + 3},$${b + 4}::jsonb,$${b + 5}::jsonb,$${b + 6}::jsonb,$${b + 7},$${b + 8},$${b + 9})`
+    );
+    values.push(
+      makeId(),
+      input.icloudUid,
+      input.fullName ?? "",
+      JSON.stringify(input.emails ?? []),
+      JSON.stringify(input.phones ?? []),
+      JSON.stringify(input.addresses ?? []),
+      input.organization ?? null,
+      input.source ?? "icloud",
+      now
+    );
+  });
+
+  await pool.query(
+    `INSERT INTO contacts (id, icloud_uid, full_name, emails, phones, addresses, organization, source, updated_at)
+     VALUES ${tuples.join(",")}
+     ON CONFLICT (icloud_uid) DO UPDATE SET
+       full_name = EXCLUDED.full_name,
+       emails = EXCLUDED.emails,
+       phones = EXCLUDED.phones,
+       addresses = EXCLUDED.addresses,
+       organization = EXCLUDED.organization,
+       source = EXCLUDED.source,
+       updated_at = EXCLUDED.updated_at`,
+    values
+  );
+  return rows.length;
+}
+
 // Delete iCloud-sourced contacts whose UID is no longer in iCloud (handles
 // contacts the user removed upstream). Never touches manually-added contacts.
 export async function pruneICloudContactsNotIn(keepUids: string[]): Promise<number> {

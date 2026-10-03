@@ -10,7 +10,7 @@
 //   ICLOUD_USERNAME      = the Apple ID, e.g. you@icloud.com
 //   ICLOUD_APP_PASSWORD  = an app-specific password from appleid.apple.com
 import { createDAVClient } from "tsdav";
-import { pruneICloudContactsNotIn, upsertICloudContact, type ContactImport } from "./db";
+import { pruneICloudContactsNotIn, upsertICloudContactsBatch, type ContactImport } from "./db";
 
 const USERNAME = process.env.ICLOUD_USERNAME;
 const APP_PASSWORD = process.env.ICLOUD_APP_PASSWORD;
@@ -169,8 +169,11 @@ export async function syncContacts(): Promise<SyncResult> {
   } catch (err) {
     throw new Error(`signed in, but could not read iCloud address books (${reason(err)})`);
   }
+  console.log(`[t4000] iCloud: signed in as "${USERNAME}", ${addressBooks.length} address book(s)`);
+
   const keepUids: string[] = [];
   let imported = 0;
+  const BATCH = 100;
 
   for (const addressBook of addressBooks) {
     // iCloud rejects the addressbook-query REPORT that fetchVCards uses by default
@@ -188,39 +191,40 @@ export async function syncContacts(): Promise<SyncResult> {
     } catch (err) {
       throw new Error(`could not list cards in address book (${reason(err)})`);
     }
+    console.log(`[t4000] iCloud: address book has ~${cardUrls.length} entries`);
 
-    // Fetch in batches so a large address book can't produce an oversized request.
-    const BATCH = 100;
-    const vcards: Array<Record<string, unknown>> = [];
+    // Fetch and write in batches: one multiget + one bulk upsert per BATCH, so a
+    // large address book doesn't become thousands of round-trips.
     for (let i = 0; i < cardUrls.length; i += BATCH) {
-      const batch = await client.fetchVCards({
+      const vcards = (await client.fetchVCards({
         addressBook,
         objectUrls: cardUrls.slice(i, i + BATCH),
-      });
-      vcards.push(...(batch as Array<Record<string, unknown>>));
-    }
+      })) as Array<Record<string, unknown>>;
 
-    for (const v of vcards) {
-      const card = parseVCard(cardText(v));
-      if (!card || !card.uid) continue;
-      const input: ContactImport = {
-        icloudUid: card.uid,
-        fullName: card.fullName,
-        emails: card.emails,
-        phones: card.phones,
-        addresses: card.addresses,
-        organization: card.organization,
-        source: "icloud",
-      };
-      await upsertICloudContact(input);
-      keepUids.push(card.uid);
-      imported++;
+      const inputs: ContactImport[] = [];
+      for (const v of vcards) {
+        const card = parseVCard(cardText(v));
+        if (!card || !card.uid) continue;
+        inputs.push({
+          icloudUid: card.uid,
+          fullName: card.fullName,
+          emails: card.emails,
+          phones: card.phones,
+          addresses: card.addresses,
+          organization: card.organization,
+          source: "icloud",
+        });
+        keepUids.push(card.uid);
+      }
+      imported += await upsertICloudContactsBatch(inputs);
+      console.log(`[t4000] iCloud: imported ${imported} contact(s) so far`);
     }
   }
 
   // Only prune when we actually read at least one address book, so a transient
   // discovery failure can't wipe the mirror.
   const pruned = addressBooks.length > 0 ? await pruneICloudContactsNotIn(keepUids) : 0;
+  console.log(`[t4000] iCloud: sync complete — ${imported} imported, ${pruned} pruned`);
   return { imported, pruned, addressBooks: addressBooks.length };
 }
 
