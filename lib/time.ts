@@ -1,24 +1,3 @@
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
-
-export function parseBirthDate(birthDate: string): Date {
-  const [year, month, day] = birthDate.split("-").map(Number);
-  return new Date(year, (month ?? 1) - 1, day ?? 1);
-}
-
-// 0-based index of the week `date` falls into, counted from `birthDate`.
-export function weekIndexForDate(birthDate: Date, date: Date): number {
-  const diffMs = date.getTime() - birthDate.getTime();
-  return Math.floor(diffMs / MS_PER_WEEK);
-}
-
-export function weeksLived(birthDate: Date, now: Date = new Date()): number {
-  return Math.max(0, weekIndexForDate(birthDate, now));
-}
-
-export function ageYears(birthDate: Date, now: Date = new Date()): number {
-  return (now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-}
-
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
@@ -39,11 +18,13 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Weeks start on Monday for weekly time tracking.
 export function startOfWeek(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay();
+  const day = d.getDay(); // 0 = Sunday .. 6 = Saturday
+  const daysSinceMonday = (day + 6) % 7; // Monday -> 0, Sunday -> 6
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - day);
+  d.setDate(d.getDate() - daysSinceMonday);
   return d;
 }
 

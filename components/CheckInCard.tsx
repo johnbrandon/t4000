@@ -1,20 +1,34 @@
-import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "../lib/theme";
 import { formatDuration, formatRelativeTime } from "../lib/time";
 import type { CheckIn } from "../lib/types";
 import { formatTemperature } from "../lib/weather";
 import ActivityIcon from "./ActivityIcon";
 
-export default function CheckInCard({ checkIn, temperatureUnit }: { checkIn: CheckIn; temperatureUnit: "C" | "F" }) {
+export default function CheckInCard({
+  checkIn,
+  temperatureUnit,
+  onPress,
+}: {
+  checkIn: CheckIn;
+  temperatureUnit: "C" | "F";
+  onPress?: () => void;
+}) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && onPress ? styles.cardPressed : null]}
+      onPress={onPress}
+    >
       <View style={styles.row}>
-        <ActivityIcon activity={checkIn.activityType} />
+        <ActivityIcon activity={checkIn.activityTypes[0]} />
         <View style={styles.headerText}>
-          <Text style={styles.title}>{checkIn.activityType}</Text>
+          <Text style={styles.title}>{checkIn.activityTypes.join(" · ")}</Text>
           <Text style={styles.subtitle}>
-            {checkIn.placeLabel ?? `${checkIn.latitude.toFixed(3)}, ${checkIn.longitude.toFixed(3)}`}
+            {checkIn.placeLabel ??
+              (checkIn.latitude !== null && checkIn.longitude !== null
+                ? `${checkIn.latitude.toFixed(3)}, ${checkIn.longitude.toFixed(3)}`
+                : "No location")}
           </Text>
         </View>
         <Text style={styles.timestamp}>{formatRelativeTime(checkIn.createdAt)}</Text>
@@ -23,26 +37,26 @@ export default function CheckInCard({ checkIn, temperatureUnit }: { checkIn: Che
       {checkIn.purpose ? <Text style={styles.purpose}>{checkIn.purpose}</Text> : null}
 
       <View style={styles.statsRow}>
-        <Stat icon="time-outline" label={formatDuration(checkIn.durationMinutes)} />
-        <Stat icon="thermometer-outline" label={formatTemperature(checkIn.temperatureC, temperatureUnit)} />
+        <Stat icon="clock-outline" label={formatDuration(checkIn.durationMinutes)} />
+        <Stat icon="thermometer" label={formatTemperature(checkIn.temperatureC, temperatureUnit)} />
         <Stat icon="water-outline" label={`${formatTemperature(checkIn.dewpointC, temperatureUnit)} dp`} />
-        {checkIn.weatherCondition ? <Stat icon="partly-sunny-outline" label={checkIn.weatherCondition} /> : null}
+        {checkIn.weatherCondition ? <Stat icon="weather-partly-cloudy" label={checkIn.weatherCondition} /> : null}
       </View>
 
       {checkIn.participants.length > 0 ? (
         <View style={styles.participantsRow}>
-          <Ionicons name="people-outline" size={14} color={theme.color.textMuted} />
+          <MaterialCommunityIcons name="account-group-outline" size={14} color={theme.color.textMuted} />
           <Text style={styles.participants}>{checkIn.participants.join(", ")}</Text>
         </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
-function Stat({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+function Stat({ icon, label }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }) {
   return (
     <View style={styles.stat}>
-      <Ionicons name={icon} size={14} color={theme.color.textMuted} />
+      <MaterialCommunityIcons name={icon} size={14} color={theme.color.textMuted} />
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
@@ -57,6 +71,10 @@ const styles = StyleSheet.create({
     padding: theme.spacing(4),
     marginBottom: theme.spacing(3),
   },
+  cardPressed: {
+    borderColor: theme.color.accent,
+    opacity: 0.85,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -68,7 +86,8 @@ const styles = StyleSheet.create({
   title: {
     color: theme.color.textPrimary,
     fontSize: theme.font.subtitle,
-    fontWeight: "700",
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
   subtitle: {
     color: theme.color.textSecondary,

@@ -1,41 +1,46 @@
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useMemo } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ActivityIcon from "../../components/ActivityIcon";
 import Chip from "../../components/Chip";
 import StatCard from "../../components/StatCard";
+import { useThemeControls } from "../../lib/ThemeContext";
 import { useCheckIns, useSettings } from "../../lib/hooks";
-import { activityColor, theme } from "../../lib/theme";
-import { ageYears, formatDuration } from "../../lib/time";
+import { theme } from "../../lib/theme";
+import { formatDuration } from "../../lib/time";
 import type { ActivityType } from "../../lib/types";
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function ProfileScreen() {
   const { settings, update } = useSettings();
+  const { name: themeName, setThemeName } = useThemeControls();
   const { checkIns } = useCheckIns();
-  const [birthDateDraft, setBirthDateDraft] = useState(settings.birthDate ?? "");
-  const [saved, setSaved] = useState(false);
 
   const totals = useMemo(() => {
     const minutesByActivity = new Map<ActivityType, number>();
     let totalMinutes = 0;
     for (const c of checkIns) {
       totalMinutes += c.durationMinutes;
-      minutesByActivity.set(c.activityType, (minutesByActivity.get(c.activityType) ?? 0) + c.durationMinutes);
+      for (const activity of c.activityTypes) {
+        minutesByActivity.set(activity, (minutesByActivity.get(activity) ?? 0) + c.durationMinutes);
+      }
     }
     const top = [...minutesByActivity.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
     return { totalMinutes, top };
   }, [checkIns]);
 
-  const age = settings.birthDate ? ageYears(new Date(settings.birthDate)) : null;
-
-  function saveBirthDate() {
-    if (!DATE_PATTERN.test(birthDateDraft)) return;
-    update("birthDate", birthDateDraft);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
-  }
+  // People tagged in check-ins, by total time spent with them (desc).
+  const people = useMemo(() => {
+    const minutesByPerson = new Map<string, number>();
+    for (const c of checkIns) {
+      for (const p of c.participants) {
+        const name = p.trim();
+        if (!name) continue;
+        minutesByPerson.set(name, (minutesByPerson.get(name) ?? 0) + c.durationMinutes);
+      }
+    }
+    return [...minutesByPerson.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [checkIns]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -45,35 +50,12 @@ export default function ProfileScreen() {
         <View style={styles.statsRow}>
           <StatCard label="Check-ins" value={String(checkIns.length)} accent={theme.color.accent} />
           <StatCard label="Total time" value={formatDuration(totals.totalMinutes)} accent={theme.color.accentBlue} />
-          <StatCard label="Age" value={age ? `${age.toFixed(1)}y` : "—"} accent={theme.color.accentAlt} />
         </View>
 
-        <Section title="Birth date (for the 4000 Weeks view)">
-          <View style={styles.row}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={theme.color.textMuted}
-              value={birthDateDraft}
-              onChangeText={setBirthDateDraft}
-              autoCapitalize="none"
-            />
-            <Pressable style={styles.saveButton} onPress={saveBirthDate}>
-              <Text style={styles.saveLabel}>{saved ? "Saved" : "Save"}</Text>
-            </Pressable>
-          </View>
-        </Section>
-
-        <Section title="Life expectancy (weeks)">
+        <Section title="Appearance">
           <View style={styles.chipWrap}>
-            {[3500, 4000, 4500, 5000].map((weeks) => (
-              <Chip
-                key={weeks}
-                label={String(weeks)}
-                selected={settings.lifeExpectancyWeeks === weeks}
-                onPress={() => update("lifeExpectancyWeeks", weeks)}
-              />
-            ))}
+            <Chip label="Light" selected={themeName === "light"} onPress={() => setThemeName("light")} />
+            <Chip label="Night (red)" selected={themeName === "night"} onPress={() => setThemeName("night")} />
           </View>
         </Section>
 
@@ -96,8 +78,32 @@ export default function ProfileScreen() {
                       styles.breakdownBarFill,
                       {
                         width: `${Math.max(4, (minutes / totals.top[0][1]) * 100)}%`,
-                        backgroundColor: activityColor(activity),
+                        backgroundColor: theme.color.accent,
                       },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.breakdownValue}>{formatDuration(minutes)}</Text>
+              </View>
+            ))}
+          </Section>
+        ) : null}
+
+        {people.length > 0 ? (
+          <Section title="Who you spend your time with">
+            {people.map(([name, minutes]) => (
+              <View key={name} style={styles.breakdownRow}>
+                <View style={styles.personBadge}>
+                  <MaterialCommunityIcons name="account" size={12} color={theme.color.accent} />
+                </View>
+                <Text style={styles.breakdownLabel} numberOfLines={1}>
+                  {abbreviateName(name)}
+                </Text>
+                <View style={styles.breakdownBarTrack}>
+                  <View
+                    style={[
+                      styles.breakdownBarFill,
+                      { width: `${Math.max(4, (minutes / (people[0][1] || 1)) * 100)}%`, backgroundColor: theme.color.accent },
                     ]}
                   />
                 </View>
@@ -109,6 +115,15 @@ export default function ProfileScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+// Abbreviate a full name to first initial + last name ("Bill Couch" -> "B Couch").
+// Single-word names are left unchanged.
+function abbreviateName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2) return name;
+  const last = parts[parts.length - 1];
+  return `${parts[0][0].toUpperCase()} ${last}`;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -132,7 +147,8 @@ const styles = StyleSheet.create({
   title: {
     color: theme.color.textPrimary,
     fontSize: theme.font.hero,
-    fontWeight: "800",
+    fontWeight: "600",
+    letterSpacing: -0.2,
     marginBottom: theme.spacing(4),
   },
   statsRow: {
@@ -144,11 +160,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(5),
   },
   sectionTitle: {
-    color: theme.color.textSecondary,
+    color: theme.color.textMuted,
     fontSize: theme.font.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     marginBottom: theme.spacing(2),
   },
   row: {
@@ -183,6 +199,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing(2),
     marginBottom: theme.spacing(3),
+  },
+  personBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    backgroundColor: theme.color.accentSoft,
+    borderColor: theme.color.accent,
+    alignItems: "center",
+    justifyContent: "center",
   },
   breakdownLabel: {
     color: theme.color.textPrimary,
