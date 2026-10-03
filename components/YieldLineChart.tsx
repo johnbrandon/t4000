@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Polyline, Stop, Text as SvgText } from "react-native-svg";
-import { dateKey, daysInMonth, localDayKey, MONTH_INITIALS } from "../lib/dayGrid";
+import { localDayKey, type DayWindow } from "../lib/dayGrid";
 import { useThemePalette } from "../lib/ThemeContext";
 import { theme } from "../lib/theme";
 
@@ -14,11 +14,11 @@ const PAD_BOTTOM = 20;
 export type YieldStatus = "loading" | "ready" | "error";
 
 export default function YieldLineChart({
-  year,
+  window,
   yields,
   status,
 }: {
-  year: number;
+  window: DayWindow;
   yields: Map<string, number>;
   status: YieldStatus;
 }) {
@@ -30,36 +30,21 @@ export default function YieldLineChart({
   // Carry the last known yield forward so weekends/holidays are filled and the
   // line covers every day up to today; future days stay null.
   const days = useMemo(() => {
-    const list: { index: number; key: string; yield: number | null }[] = [];
-    let index = 0;
     let last: number | null = null;
-    for (let m = 0; m < 12; m++) {
-      for (let d = 1; d <= daysInMonth(year, m); d++) {
-        const key = dateKey(year, m, d);
-        const raw = yields.get(key);
-        let value: number | null = null;
-        if (typeof raw === "number") {
-          value = raw;
-          last = raw;
-        } else if (last != null && key <= todayKey) {
-          value = last;
-        }
-        list.push({ index, key, yield: value });
-        index += 1;
+    return window.keys.map((key, index) => {
+      const raw = yields.get(key);
+      let value: number | null = null;
+      if (typeof raw === "number") {
+        value = raw;
+        last = raw;
+      } else if (last != null && key <= todayKey) {
+        value = last;
       }
-    }
-    return list;
-  }, [year, yields, todayKey]);
+      return { index, key, yield: value };
+    });
+  }, [window, yields, todayKey]);
 
-  const monthStarts = useMemo(() => {
-    const starts: { label: string; index: number }[] = [];
-    let index = 0;
-    for (let m = 0; m < 12; m++) {
-      starts.push({ label: MONTH_INITIALS[m], index: index + daysInMonth(year, m) / 2 });
-      index += daysInMonth(year, m);
-    }
-    return starts;
-  }, [year]);
+  const monthStarts = window.monthStarts;
 
   const n = days.length;
   const plotW = Math.max(1, width - 2 * PAD_X);
@@ -86,7 +71,7 @@ export default function YieldLineChart({
   return (
     <View style={styles.card}>
       <Text style={styles.title}>10-Year Treasury Yield</Text>
-      <Text style={styles.subtitle}>Daily 10-year Treasury constant-maturity yield, {year}.</Text>
+      <Text style={styles.subtitle}>Daily 10-year Treasury constant-maturity yield, trailing 12 months.</Text>
 
       <View onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)} style={{ height: H }}>
         {width > 0 && hasData ? (

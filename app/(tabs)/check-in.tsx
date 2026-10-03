@@ -91,6 +91,9 @@ export default function CheckInScreen() {
   const [addressLoading, setAddressLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const existingWeather = useRef<WeatherSnapshot | null>(null);
+  // Coordinates a check-in was loaded with, so editing other fields doesn't
+  // re-geocode and overwrite a chosen venue name with a street address.
+  const editOriginalCoords = useRef<{ lat: number | null; lon: number | null } | null>(null);
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
 
@@ -181,6 +184,7 @@ export default function CheckInScreen() {
       setLatInput(c.latitude != null ? String(c.latitude) : "");
       setLonInput(c.longitude != null ? String(c.longitude) : "");
       setResolvedAddress(c.placeLabel);
+      editOriginalCoords.current = { lat: c.latitude, lon: c.longitude };
       existingWeather.current = c.weatherCode != null && c.temperatureC != null
         ? {
             temperatureC: c.temperatureC,
@@ -209,6 +213,11 @@ export default function CheckInScreen() {
     ) {
       return;
     }
+    // Don't re-resolve the coordinates a check-in was loaded with — that would
+    // replace a saved venue name with a street address. Only re-geocode once the
+    // user actually changes the location.
+    const orig = editOriginalCoords.current;
+    if (orig && lat === orig.lat && lon === orig.lon) return;
     let cancelled = false;
     setAddressLoading(true);
     const handle = setTimeout(() => {
@@ -326,11 +335,16 @@ export default function CheckInScreen() {
     // Location is best-effort: if it isn't ready (permission denied, still
     // resolving, or unavailable) the check-in still saves without coordinates.
     const ready = location.status === "ready" ? location : null;
-    // Prefer the chosen venue name; fall back to the reverse-geocoded address.
-    const placeLabel = selectedPlace?.name ?? ready?.placeLabel ?? null;
+    // When a venue is chosen, make it the source of truth for both the label and
+    // the coordinates (so the map pin sits on the venue, not the device), falling
+    // back to the device location + reverse-geocoded address.
+    const place = selectedPlace;
+    const latitude = place?.latitude ?? ready?.coords.latitude ?? null;
+    const longitude = place?.longitude ?? ready?.coords.longitude ?? null;
+    const placeLabel = place?.name ?? ready?.placeLabel ?? null;
     await insertCheckIn({
-      latitude: ready?.coords.latitude ?? null,
-      longitude: ready?.coords.longitude ?? null,
+      latitude,
+      longitude,
       placeLabel,
       temperatureC: ready?.weather?.temperatureC ?? null,
       dewpointC: ready?.weather?.dewpointC ?? null,

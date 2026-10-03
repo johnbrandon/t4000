@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
-import { dateKey, daysInMonth, MONTH_INITIALS } from "../lib/dayGrid";
+import type { DayWindow } from "../lib/dayGrid";
 import { useThemePalette } from "../lib/ThemeContext";
 import { theme } from "../lib/theme";
 
@@ -11,10 +11,10 @@ const PAD_X = 8;
 const PAD_TOP = 14;
 const PAD_BOTTOM = 20;
 
-// A bar-per-day chart across a year (bars grow from the baseline up). Used for
-// daily rainfall and average temperature.
+// A bar-per-day chart across an arbitrary day window (bars grow from the baseline
+// up). Used for daily rainfall and average temperature.
 export default function DailyBarChart({
-  year,
+  window,
   data,
   title,
   subtitle,
@@ -24,7 +24,7 @@ export default function DailyBarChart({
   formatTop,
   emptyNote,
 }: {
-  year: number;
+  window: DayWindow;
   data: Map<string, number>;
   title: string;
   subtitle: string;
@@ -37,28 +37,11 @@ export default function DailyBarChart({
   const palette = useThemePalette();
   const [width, setWidth] = useState(0);
 
-  const days = useMemo(() => {
-    const list: { index: number; key: string; value: number | null }[] = [];
-    let index = 0;
-    for (let m = 0; m < 12; m++) {
-      for (let d = 1; d <= daysInMonth(year, m); d++) {
-        const key = dateKey(year, m, d);
-        list.push({ index, key, value: data.has(key) ? (data.get(key) as number) : null });
-        index += 1;
-      }
-    }
-    return list;
-  }, [year, data]);
-
-  const monthStarts = useMemo(() => {
-    const starts: { label: string; index: number }[] = [];
-    let index = 0;
-    for (let m = 0; m < 12; m++) {
-      starts.push({ label: MONTH_INITIALS[m], index: index + daysInMonth(year, m) / 2 });
-      index += daysInMonth(year, m);
-    }
-    return starts;
-  }, [year]);
+  const days = useMemo(
+    () => window.keys.map((key, index) => ({ index, key, value: data.has(key) ? (data.get(key) as number) : null })),
+    [window, data]
+  );
+  const monthStarts = window.monthStarts;
 
   const values = days.map((d) => d.value).filter((v): v is number => v != null);
   const hasData = values.length > 0;

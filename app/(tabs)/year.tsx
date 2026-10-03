@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Chip from "../../components/Chip";
-import AppointmentsChart from "../../components/AppointmentsChart";
 import DailyBarChart from "../../components/DailyBarChart";
 import YearGrid from "../../components/YearGrid";
 import YieldLineChart, { type YieldStatus } from "../../components/YieldLineChart";
-import { localDayKey, summarizeByDay, type DaySummary } from "../../lib/dayGrid";
+import { summarizeByDay, trailingYearWindow, type DaySummary } from "../../lib/dayGrid";
 import { useThemePalette } from "../../lib/ThemeContext";
 import { useCheckIns, useSettings } from "../../lib/hooks";
 import { TEMP_MAX_C, TEMP_MIN_C, theme } from "../../lib/theme";
@@ -32,14 +31,20 @@ export default function YearScreen() {
   const [backfillTemps, setBackfillTemps] = useState<Map<string, number>>(new Map());
   const [precip, setPrecip] = useState<Map<string, number>>(new Map());
 
+  // The temperature, rainfall, and treasury charts show a rolling 12-month window
+  // (independent of the grid's year selector), which spans the current and prior
+  // calendar year — so we fetch both and merge.
+  const chartWindow = useMemo(() => trailingYearWindow(), []);
+
   useEffect(() => {
     let cancelled = false;
     setYieldStatus("loading");
-    fetchTreasuryYields(year)
-      .then((map) => {
+    Promise.all([fetchTreasuryYields(currentYear), fetchTreasuryYields(currentYear - 1)])
+      .then(([thisYear, lastYear]) => {
         if (cancelled) return;
-        setYields(map);
-        setYieldStatus(map.size > 0 ? "ready" : "error");
+        const merged = new Map([...lastYear, ...thisYear]);
+        setYields(merged);
+        setYieldStatus(merged.size > 0 ? "ready" : "error");
       })
       .catch(() => {
         if (!cancelled) setYieldStatus("error");
@@ -47,19 +52,22 @@ export default function YearScreen() {
     return () => {
       cancelled = true;
     };
-  }, [year]);
+  }, [currentYear]);
 
   useEffect(() => {
     let cancelled = false;
-    fetchDailyWeather(BACKFILL_LAT, BACKFILL_LON, year).then((w) => {
+    Promise.all([
+      fetchDailyWeather(BACKFILL_LAT, BACKFILL_LON, currentYear),
+      fetchDailyWeather(BACKFILL_LAT, BACKFILL_LON, currentYear - 1),
+    ]).then(([thisYear, lastYear]) => {
       if (cancelled) return;
-      setBackfillTemps(w.meanTempC);
-      setPrecip(w.precipMm);
+      setBackfillTemps(new Map([...lastYear.meanTempC, ...thisYear.meanTempC]));
+      setPrecip(new Map([...lastYear.precipMm, ...thisYear.precipMm]));
     });
     return () => {
       cancelled = true;
     };
-  }, [year]);
+  }, [currentYear]);
 
   const years = useMemo(() => {
     const set = new Set<number>([currentYear]);
@@ -68,19 +76,6 @@ export default function YearScreen() {
   }, [checkIns, currentYear]);
 
   const dayData = useMemo(() => summarizeByDay(checkIns, year), [checkIns, year]);
-
-  // Count buyer/seller check-ins per day for the appointments chart.
-  const appointmentsByDay = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const c of checkIns) {
-      if (!c.activityTypes.includes("Buyer") && !c.activityTypes.includes("Seller")) continue;
-      const date = new Date(c.createdAt);
-      if (date.getFullYear() !== year) continue;
-      const key = localDayKey(date);
-      map.set(key, (map.get(key) ?? 0) + 1);
-    }
-    return map;
-  }, [checkIns, year]);
 
   const selectedSummary: DaySummary | null = selectedDate ? dayData.get(selectedDate) ?? null : null;
 
@@ -110,10 +105,10 @@ export default function YearScreen() {
         </View>
 
         <DailyBarChart
-          year={year}
+          window={chartWindow}
           data={backfillTemps}
           title="Average Temperature"
-          subtitle={`Daily average temperature at the default location, ${year}.`}
+          subtitle="Daily average temperature at the default location, trailing 12 months."
           domainMin={TEMP_MIN_C}
           domainMax={TEMP_MAX_C}
           colorFor={(v) => palette.tempColor(v)}
@@ -122,10 +117,10 @@ export default function YearScreen() {
         />
 
         <DailyBarChart
-          year={year}
+          window={chartWindow}
           data={precip}
           title="Rainfall"
-          subtitle={`Total daily precipitation at the default location, ${year}.`}
+          subtitle="Total daily precipitation at the default location, trailing 12 months."
           domainMin={0}
           domainMax={null}
           colorFor={() => palette.accentBlue}
@@ -133,8 +128,7 @@ export default function YearScreen() {
           emptyNote="Rainfall data unavailable right now."
         />
 
-        <YieldLineChart year={year} yields={yields} status={yieldStatus} />
-        <AppointmentsChart year={year} appointmentsByDay={appointmentsByDay} />
+        <YieldLineChart window={chartWindow} yields={yields} status={yieldStatus} />
 
         {selectedSummary ? (
           <View style={styles.detailCard}>

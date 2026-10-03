@@ -79,3 +79,35 @@ export const MONTH_LABELS = [
 ];
 
 export const MONTH_INITIALS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+// An ordered run of day keys with a centered month label for each month, used to
+// drive the daily charts across an arbitrary window (not just a calendar year).
+export interface DayWindow {
+  keys: string[]; // ordered YYYY-MM-DD (local)
+  monthStarts: { label: string; index: number }[]; // label centered over its month's run
+}
+
+// The trailing ~12 months: from the 1st of the month 11 months ago through today.
+export function trailingYearWindow(end: Date = new Date()): DayWindow {
+  const start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
+  const keys: string[] = [];
+  const cursor = new Date(start);
+  // Compare on local date only, so the final day (today) is included.
+  const endKey = localDayKey(end);
+  while (localDayKey(cursor) <= endKey) {
+    keys.push(localDayKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const monthStarts: { label: string; index: number }[] = [];
+  let runStart = 0;
+  for (let i = 1; i <= keys.length; i++) {
+    const prevMonth = Number(keys[i - 1].slice(5, 7)) - 1;
+    const curMonth = i < keys.length ? Number(keys[i].slice(5, 7)) - 1 : -1;
+    if (i === keys.length || curMonth !== prevMonth) {
+      monthStarts.push({ label: MONTH_INITIALS[prevMonth], index: (runStart + i - 1) / 2 });
+      runStart = i;
+    }
+  }
+  return { keys, monthStarts };
+}
