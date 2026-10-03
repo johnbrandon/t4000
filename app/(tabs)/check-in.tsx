@@ -110,16 +110,14 @@ export default function CheckInScreen() {
 
   function pickPlace(place: Place) {
     // Toggle off if tapping the selected one (fall back to the address).
-    setSelectedPlace((prev) => {
-      const next = prev?.fsqId === place.fsqId ? null : place;
-      // Gentle assist: if no interaction is chosen yet, suggest one from the
-      // venue category. Never overrides an existing choice.
-      if (next && activityTypes.length === 0) {
-        const suggested = activityForCategory(next.category);
-        if (suggested) setActivityTypes([suggested]);
-      }
-      return next;
-    });
+    const next = selectedPlace?.fsqId === place.fsqId ? null : place;
+    setSelectedPlace(next);
+    // Gentle assist: if no interaction is chosen yet, suggest one from the venue
+    // category. Never overrides an existing choice.
+    if (next && activityTypes.length === 0) {
+      const suggested = activityForCategory(next.category);
+      if (suggested) setActivityTypes([suggested]);
+    }
   }
 
   const loadLocation = async () => {
