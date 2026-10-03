@@ -173,9 +173,35 @@ export async function syncContacts(): Promise<SyncResult> {
   let imported = 0;
 
   for (const addressBook of addressBooks) {
-    const vcards = await client.fetchVCards({ addressBook });
+    // iCloud rejects the addressbook-query REPORT that fetchVCards uses by default
+    // (it answers 507 Insufficient Storage). So enumerate the card URLs with a
+    // PROPFIND (Depth 1), which iCloud accepts, then fetch their data by URL with
+    // multiget — passing objectUrls makes fetchVCards skip the failing query.
+    let cardUrls: string[];
+    try {
+      const entries = await client.propfind({
+        url: addressBook.url,
+        props: { "d:getetag": {} },
+        depth: "1",
+      });
+      cardUrls = entries.map((e) => e.href ?? "").filter((href) => Boolean(href));
+    } catch (err) {
+      throw new Error(`could not list cards in address book (${reason(err)})`);
+    }
+
+    // Fetch in batches so a large address book can't produce an oversized request.
+    const BATCH = 100;
+    const vcards: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < cardUrls.length; i += BATCH) {
+      const batch = await client.fetchVCards({
+        addressBook,
+        objectUrls: cardUrls.slice(i, i + BATCH),
+      });
+      vcards.push(...(batch as Array<Record<string, unknown>>));
+    }
+
     for (const v of vcards) {
-      const card = parseVCard(cardText(v as Record<string, unknown>));
+      const card = parseVCard(cardText(v));
       if (!card || !card.uid) continue;
       const input: ContactImport = {
         icloudUid: card.uid,
