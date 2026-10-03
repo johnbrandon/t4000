@@ -18,6 +18,7 @@ import {
 } from "./db";
 import { icloudConfigured, syncContacts } from "./icloud";
 import { currentWeather, dailyWeather, treasuryYields, weatherAt } from "./market";
+import { placesConfigured, searchNearby } from "./places";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const STATIC_DIR = process.env.STATIC_DIR ?? path.resolve(__dirname, "../../dist");
@@ -211,6 +212,39 @@ app.get(
       return;
     }
     res.json(await treasuryYields(Math.round(year)));
+  })
+);
+
+// --- places (Foursquare), proxied server-side so the key stays off the client ---
+app.get(
+  "/api/places/status",
+  wrap(async (_req, res) => {
+    res.json({ configured: placesConfigured() });
+  })
+);
+
+app.get(
+  "/api/places/search",
+  wrap(async (req, res) => {
+    const lat = num(req.query.lat);
+    const lon = num(req.query.lon);
+    if (lat === null || lon === null) {
+      res.status(400).json({ error: "lat and lon are required" });
+      return;
+    }
+    if (!placesConfigured()) {
+      res.status(400).json({ error: "Foursquare is not configured on the server." });
+      return;
+    }
+    const query = typeof req.query.q === "string" ? req.query.q : undefined;
+    const limit = num(req.query.limit);
+    try {
+      res.json(await searchNearby(lat, lon, query, limit ?? 10));
+    } catch (err) {
+      console.error("[t4000] Foursquare search failed:", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      res.status(502).json({ error: `Place search failed: ${detail}` });
+    }
   })
 );
 

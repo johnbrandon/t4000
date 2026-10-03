@@ -22,6 +22,8 @@ the `Dockerfile` at the repo root.
    - `NODE_ENV` → `production` (so the auth cookie is sent `Secure`).
    - `ICLOUD_USERNAME` / `ICLOUD_APP_PASSWORD` _(optional — enables the Contacts
      import; see below)_.
+   - `FOURSQUARE_API_KEY` _(optional — enables the nearby-venue picker on check-in;
+     see below)_.
    - `PORT` is injected by Railway automatically — don't set it.
 5. **Deploy.** Railway builds the image (web export + server) and starts it. The
    health check hits `/api/health`. When it's green, open the generated URL (or add a
@@ -61,6 +63,26 @@ them set, the Contacts tab shows a **Sync iCloud** button; tapping it fetches yo
 vCards, upserts them keyed on each contact's iCloud UID (so repeat syncs don't
 duplicate), and removes any that were deleted upstream. Without them, the tab explains
 that iCloud isn't configured.
+
+## Places (Foursquare nearby-venue picker)
+
+On a "Now" check-in, the app can list nearby venues (from Foursquare Places) so you
+can name the exact place you're at instead of just the street address. Picking a
+venue sets the check-in's label, and — only when you haven't chosen an interaction
+yet — suggests one from the venue's category (a café → Coffee, an office → Meeting).
+
+To enable it, set one variable on the app service:
+
+- `FOURSQUARE_API_KEY` → a Places API key from
+  [foursquare.com/developers](https://foursquare.com/developers/). It's used as a
+  Bearer token against the current Places API (`places-api.foursquare.com`), proxied
+  server-side (`/api/places/search`) so the key never reaches the browser, with
+  short-lived caching.
+- `FOURSQUARE_API_VERSION` → optional; overrides the dated API-version header if
+  Foursquare bumps it (defaults to a known-good value).
+
+Without the key, the check-in screen simply skips the venue picker and uses the
+reverse-geocoded address, exactly as before.
 
 ## Notes
 

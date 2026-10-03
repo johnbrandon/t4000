@@ -17,6 +17,13 @@ import Chip from "../../components/Chip";
 import { deleteCheckIn, getCheckIn, insertCheckIn, updateCheckIn } from "../../lib/db";
 import { useContacts } from "../../lib/hooks";
 import { getCurrentCoordinates, reverseGeocode, type Coordinates } from "../../lib/location";
+import {
+  activityForCategory,
+  formatDistance,
+  getPlacesStatus,
+  searchNearbyPlaces,
+  type Place,
+} from "../../lib/places";
 import { theme } from "../../lib/theme";
 import { QUALITY_NEUTRAL, SELECTABLE_ACTIVITIES, type ActivityType } from "../../lib/types";
 import { fetchWeather, fetchWeatherAt, formatTemperature, type WeatherSnapshot } from "../../lib/weather";
@@ -87,6 +94,30 @@ export default function CheckInScreen() {
 
   const [location, setLocation] = useState<LocationState>({ status: "loading" });
 
+  // Foursquare nearby-venue picker (Now mode). Off unless the server has a key.
+  const [placesEnabled, setPlacesEnabled] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+
+  useEffect(() => {
+    getPlacesStatus().then((s) => setPlacesEnabled(s.configured));
+  }, []);
+
+  function pickPlace(place: Place) {
+    // Toggle off if tapping the selected one (fall back to the address).
+    setSelectedPlace((prev) => {
+      const next = prev?.fsqId === place.fsqId ? null : place;
+      // Gentle assist: if no interaction is chosen yet, suggest one from the
+      // venue category. Never overrides an existing choice.
+      if (next && activityTypes.length === 0) {
+        const suggested = activityForCategory(next.category);
+        if (suggested) setActivityTypes([suggested]);
+      }
+      return next;
+    });
+  }
+
   const loadLocation = async () => {
     setLocation({ status: "loading" });
     try {
@@ -110,6 +141,30 @@ export default function CheckInScreen() {
     if (editing) return;
     loadLocation();
   }, [editing]);
+
+  // Fetch nearby venues once we have coordinates (Now mode, Foursquare enabled).
+  useEffect(() => {
+    if (mode !== "now" || !placesEnabled || location.status !== "ready") {
+      setNearbyPlaces([]);
+      return;
+    }
+    let cancelled = false;
+    setPlacesLoading(true);
+    setSelectedPlace(null);
+    searchNearbyPlaces(location.coords.latitude, location.coords.longitude)
+      .then((ps) => {
+        if (!cancelled) setNearbyPlaces(ps);
+      })
+      .catch(() => {
+        if (!cancelled) setNearbyPlaces([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPlacesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, placesEnabled, location]);
 
   useEffect(() => {
     if (!editId) return;
@@ -271,10 +326,12 @@ export default function CheckInScreen() {
     // Location is best-effort: if it isn't ready (permission denied, still
     // resolving, or unavailable) the check-in still saves without coordinates.
     const ready = location.status === "ready" ? location : null;
+    // Prefer the chosen venue name; fall back to the reverse-geocoded address.
+    const placeLabel = selectedPlace?.name ?? ready?.placeLabel ?? null;
     await insertCheckIn({
       latitude: ready?.coords.latitude ?? null,
       longitude: ready?.coords.longitude ?? null,
-      placeLabel: ready?.placeLabel ?? null,
+      placeLabel,
       temperatureC: ready?.weather?.temperatureC ?? null,
       dewpointC: ready?.weather?.dewpointC ?? null,
       weatherCondition: ready?.weather?.weatherCondition ?? null,
@@ -367,9 +424,61 @@ export default function CheckInScreen() {
           ) : null}
 
           {mode === "now" ? (
-            <Section title="Location & conditions">
-              <LocationCard state={location} onRetry={loadLocation} />
-            </Section>
+            <>
+              <Section title="Location & conditions">
+                <LocationCard state={location} onRetry={loadLocation} />
+              </Section>
+
+              {placesEnabled && location.status === "ready" ? (
+                <Section title="Where are you?">
+                  {placesLoading ? (
+                    <View style={styles.addressRow}>
+                      <ActivityIndicator size="small" color={theme.color.textMuted} />
+                      <Text style={styles.locationHint}>Finding nearby places…</Text>
+                    </View>
+                  ) : nearbyPlaces.length === 0 ? (
+                    <Text style={styles.locationHint}>
+                      No nearby places found — the address above will be used.
+                    </Text>
+                  ) : (
+                    <View style={styles.placeList}>
+                      {nearbyPlaces.map((place) => {
+                        const active = selectedPlace?.fsqId === place.fsqId;
+                        const meta = [place.category, formatDistance(place.distanceM)].filter(Boolean).join(" · ");
+                        return (
+                          <Pressable
+                            key={place.fsqId}
+                            style={[styles.placeRow, active && styles.placeRowActive]}
+                            onPress={() => pickPlace(place)}
+                          >
+                            <MaterialCommunityIcons
+                              name={active ? "map-marker-check" : "map-marker-outline"}
+                              size={20}
+                              color={active ? theme.color.accent : theme.color.textMuted}
+                            />
+                            <View style={styles.placeBody}>
+                              <Text style={[styles.placeName, active && { color: theme.color.accent }]} numberOfLines={1}>
+                                {place.name}
+                              </Text>
+                              {meta ? (
+                                <Text style={styles.placeMeta} numberOfLines={1}>
+                                  {meta}
+                                </Text>
+                              ) : null}
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                      <Text style={styles.locationHint}>
+                        {selectedPlace
+                          ? `Saving as “${selectedPlace.name}.” Tap again to use the address instead.`
+                          : "Pick a place, or leave unselected to use the address above."}
+                      </Text>
+                    </View>
+                  )}
+                </Section>
+              ) : null}
+            </>
           ) : (
             <>
               <Section title="Date & time">
@@ -739,6 +848,37 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     padding: theme.spacing(4),
     gap: theme.spacing(2),
+  },
+  placeList: {
+    gap: theme.spacing(2),
+  },
+  placeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing(2),
+    backgroundColor: theme.color.surface,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: theme.spacing(3),
+    paddingVertical: theme.spacing(2),
+  },
+  placeRowActive: {
+    borderColor: theme.color.accent,
+    backgroundColor: theme.color.accentSoft,
+  },
+  placeBody: {
+    flex: 1,
+  },
+  placeName: {
+    color: theme.color.textPrimary,
+    fontSize: theme.font.body,
+    fontWeight: "500",
+  },
+  placeMeta: {
+    color: theme.color.textMuted,
+    fontSize: theme.font.caption,
+    marginTop: 1,
   },
   locationRow: {
     flexDirection: "row",
